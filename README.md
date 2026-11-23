@@ -116,7 +116,7 @@ multi-tenancy, which this version does not have.
 
 - Sources are the company's own site and news. There are no financial statements: revenue, margins and valuation are not screened.
 - A company's own website is marketing. "Market position" scored from it should be read as "what the company claims".
-- News search is by company name, so a common name can pull in the wrong company. The analyst is told to ignore those; it will not always manage.
+- News is kept only when the article names the company as whole words (the first weekly digest listed ShopBack and Backcountry for "Back Market" before this filter existed). A company with a very common name can still collect unrelated articles, and a relevant article can still be low value (a shopping deal page).
 - Verification proves a sentence exists in the source. It does not prove the sentence supports the score.
 - One desk, one thesis. No private workspaces, no invitations, no comments.
 - After the reveal a vote cannot be reopened.
@@ -137,7 +137,7 @@ npx deepspace dev start        # http://localhost:5173
 ## Tests
 
 ```bash
-npm run test:unit              # 24 unit tests: scoring, quote verification, parsing, email, LaTeX
+npm run test:unit              # 26 unit tests: scoring, quote verification, parsing, email, LaTeX
 npx deepspace test run all     # + 15 browser tests
 ```
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { digestEmailText } from './email'
 import { escapeLatex, memoLatex } from './pdf'
-import { checkScores, normalise, parseJson, pickUsefulLinks, toNewsItems, verifyQuote, type RawAnalysis, type Source } from './providers'
+import { checkScores, mentionsCompany, normalise, parseJson, pickUsefulLinks, toNewsItems, verifyQuote, type RawAnalysis, type Source } from './providers'
 import { coverage, tally, weightedScore } from './score'
 import { DEFAULT_DESK, type CriterionScore, type Deal } from './types'
 import { cleanWebsiteUrl } from './validate'
@@ -104,6 +104,20 @@ describe('small helpers', () => {
   it('toNewsItems reads the date carried in the title', () => {
     const [item] = toNewsItems([{ id: 'N1', url: 'https://n.com/1', title: 'Tablo raises a round (2026-06-12)', text: 'Tablo raises a round\nSummary: It raised money.' }])
     expect(item).toEqual({ title: 'Tablo raises a round', url: 'https://n.com/1', date: '2026-06-12', summary: 'It raised money.' })
+  })
+})
+
+describe('mentionsCompany', () => {
+  it('matches the name as whole words, with or without the space', () => {
+    expect(mentionsCompany('Back Market', 'Refurbished leader Back Market raises a new round')).toBe(true)
+    expect(mentionsCompany('Back Market', 'BackMarket ouvre un bureau à Berlin')).toBe(true)
+    expect(mentionsCompany('Mews', 'Hotel software company Mews, founded in Prague')).toBe(true)
+  })
+  it('rejects look-alike companies', () => {
+    expect(mentionsCompany('Back Market', 'ShopBack raises US$45 mil in latest funding round')).toBe(false)
+    expect(mentionsCompany('Back Market', 'Backcountry selects a new payment partner for its market')).toBe(false)
+    expect(mentionsCompany('Mews', 'Newsbreak: fund seeks RM1 bil')).toBe(false)
+    expect(mentionsCompany('', 'anything')).toBe(false)
   })
 })
 

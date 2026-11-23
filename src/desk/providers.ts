@@ -99,13 +99,24 @@ export function liveProviders(tools: ActionTools): Providers {
     },
 
     async searchNews(companyName, since) {
-      const r = await call<NewsResponse>('exa/news-search', { query: `${companyName} company`, numResults: 6, from: since.slice(0, 10) })
+      // Exa search is semantic: on a narrow date window it happily returns ShopBack or
+      // Backcountry for "Back Market". `includeText` asks Exa for pages that contain the
+      // name, and `mentionsCompany` checks it again here, because a digest full of
+      // unrelated companies is worse than an empty one.
+      const r = await call<NewsResponse>('exa/news-search', {
+        query: `${companyName} company`,
+        numResults: 6,
+        from: since.slice(0, 10),
+        includeText: [companyName],
+      })
       const sources: Source[] = []
       for (const item of r.results ?? []) {
         if (!item.url || !item.title) continue
-        const body = [item.title, asText(item.summary), asText(item.text)].join('\n').slice(0, MAX_NEWS_CHARS)
+        const body = [item.title, asText(item.summary), asText(item.text)].join('\n')
+        if (!mentionsCompany(companyName, body)) continue
+        const text = body.slice(0, MAX_NEWS_CHARS)
         // The article date travels in the title so it survives into the stored news item.
-        sources.push({ id: `N${sources.length + 1}`, url: item.url, title: `${item.title} (${(item.publishedDate ?? '').slice(0, 10)})`, text: body })
+        sources.push({ id: `N${sources.length + 1}`, url: item.url, title: `${item.title} (${(item.publishedDate ?? '').slice(0, 10)})`, text })
       }
       return { value: sources, costUsd: r.costUsd ?? 0 }
     },
@@ -184,6 +195,14 @@ export function parseJson(text: string): unknown {
   } catch {
     return null
   }
+}
+
+/** True when the text names the company as whole words ("Back Market", not "ShopBack" or "Backcountry"). */
+export function mentionsCompany(companyName: string, text: string): boolean {
+  const words = companyName.trim().split(/\s+/).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  if (words.length === 0 || !words[0]) return false
+  // Words of the name in order, separated by spaces or nothing ("Back Market" also matches "BackMarket").
+  return new RegExp(`(^|[^\\p{L}\\p{N}])${words.join('\\s*')}($|[^\\p{L}\\p{N}])`, 'iu').test(text)
 }
 
 function asText(value: unknown): string {
