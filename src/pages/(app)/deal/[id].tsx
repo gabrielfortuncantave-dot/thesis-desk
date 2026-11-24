@@ -7,7 +7,7 @@
  * member looking at the page, at the same moment.
  */
 
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useUser } from 'deepspace'
 import { Button, Label, Textarea, useToast } from '@/components/ui'
@@ -15,8 +15,8 @@ import { RadarChart, StageChip, TotalScore, scoreTone } from '../../../component
 import { SignInPrompt } from '../../../components/SignInPrompt'
 import { callAction } from '../../../lib/actions'
 import { useDesk } from '../../../lib/desk'
-import { coverage, tally, weightedScore } from '../../../desk/score'
-import { STAGES, type Deal, type Vote } from '../../../desk/types'
+import { coverage, tally, verdict, weightedScore } from '../../../desk/score'
+import { STAGES, type CasePoint, type Deal, type Vote } from '../../../desk/types'
 import { safeHref } from '../../../desk/validate'
 
 export default function DealPage() {
@@ -326,6 +326,21 @@ export default function DealPage() {
               </section>
             )}
 
+            {((deal.bull ?? []).length > 0 || (deal.bear ?? []).length > 0) && (
+              <section className="mt-12" aria-labelledby="case-title" data-testid="cases">
+                <h2 id="case-title" className="font-display text-2xl">
+                  The case for, the case against
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  The analyst argues both sides before anyone votes. An argument is shown only if its quote was found in the source.
+                </p>
+                <div className="mt-5 grid gap-6 md:grid-cols-2">
+                  <CaseColumn title="Why invest" tone="text-positive" border="border-positive" points={deal.bull ?? []} sample={Boolean(deal.isSample)} testId="bull" />
+                  <CaseColumn title="Why pass" tone="text-negative" border="border-negative" points={deal.bear ?? []} sample={Boolean(deal.isSample)} testId="bear" />
+                </div>
+              </section>
+            )}
+
             <Committee deal={deal} votes={votes.records.map((v) => v.data)} userId={user?.id} canManage={canManage} run={run} working={working} />
           </>
         )}
@@ -358,6 +373,18 @@ function Committee({
   const revealed = deal.voting === 'revealed'
   const result = tally(votes)
 
+  // The reveal is a shared moment: anyone who has this page open when the vote
+  // closes sees the result announced, without touching anything. Opening an
+  // already-revealed vote later does not replay it.
+  const wasOpen = useRef(deal.voting === 'open')
+  const [announce, setAnnounce] = useState(false)
+  useEffect(() => {
+    if (deal.voting === 'revealed' && wasOpen.current && votes.length > 0) {
+      wasOpen.current = false
+      setAnnounce(true)
+    }
+  }, [deal.voting, votes.length])
+
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
@@ -373,6 +400,32 @@ function Committee({
       // How many ballots the server actually sent to this browser. The tests read it to prove blindness.
       data-ballots-received={votes.length}
     >
+      {announce && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="announce-title"
+          data-testid="reveal-moment"
+          className="reveal-moment fixed inset-0 z-50 flex items-center justify-center bg-foreground/60 p-6"
+          onClick={() => setAnnounce(false)}
+        >
+          <div className="w-full max-w-lg rounded-md border border-border bg-card p-10 text-center shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">The committee has spoken on {deal.name}</p>
+            <p id="announce-title" className={`font-display mt-4 text-6xl ${verdict(result) === 'Invest' ? 'text-positive' : verdict(result) === 'Pass' ? 'text-negative' : 'text-caution'}`}>
+              {verdict(result)}
+            </p>
+            <p className="mt-4 text-lg">
+              Invest {result.invest} · Pass {result.pass}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Conviction {result.investConviction} for, {result.passConviction} against
+            </p>
+            <Button className="mt-8" autoFocus onClick={() => setAnnounce(false)}>
+              See the ballots
+            </Button>
+          </div>
+        </div>
+      )}
       <h2 id="committee-title" className="font-display text-2xl">
         Committee vote
       </h2>
@@ -392,7 +445,7 @@ function Committee({
                 <span className="text-negative">Pass {result.pass}</span>
               </p>
               <p className="mt-2 text-sm text-muted-foreground">
-                Conviction: {result.investConviction} for, {result.passConviction} against.
+                Conviction: {result.investConviction} for, {result.passConviction} against. Decision: <span className="font-medium text-foreground">{verdict(result)}</span>.
               </p>
             </div>
           ) : !userId ? (
@@ -468,6 +521,37 @@ function Committee({
         </div>
       </div>
     </section>
+  )
+}
+
+function CaseColumn({ title, tone, border, points, sample, testId }: { title: string; tone: string; border: string; points: CasePoint[]; sample: boolean; testId: string }) {
+  return (
+    <div className="rounded-md border border-border bg-card p-5" data-testid={testId}>
+      <h3 className={`font-display text-xl ${tone}`}>{title}</h3>
+      {points.length === 0 ? (
+        <p className="mt-3 text-sm text-muted-foreground">No argument on this side survived the quote check.</p>
+      ) : (
+        <ol className="mt-3 space-y-4 text-sm">
+          {points.map((p) => (
+            <li key={p.point} data-testid="case-point">
+              <p className="font-medium">{p.point}</p>
+              <blockquote className={`mt-2 border-l-2 pl-3 text-muted-foreground ${border}`}>
+                “{p.quote}”
+                <footer className="mt-1 text-xs">
+                  {sample || !safeHref(p.url) ? (
+                    p.title
+                  ) : (
+                    <a href={safeHref(p.url)!} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+                      {p.title}
+                    </a>
+                  )}
+                </footer>
+              </blockquote>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
   )
 }
 

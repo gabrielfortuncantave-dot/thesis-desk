@@ -65,6 +65,10 @@ test('research runs live and only verified quotes survive', async ({ users }) =>
   // The scorecard says a quote was removed, without repeating the unverified claim.
   await expect(analyst.page.getByTestId('dropped-note')).toHaveCount(1)
   await expect(analyst.page.getByTestId('dropped-note')).toContainText('1 quote the analyst cited was not found')
+  // Both sides are argued, and the bear point with an invented quote did not survive.
+  await expect(analyst.page.getByTestId('bull').getByTestId('case-point')).toHaveCount(2)
+  await expect(analyst.page.getByTestId('bear').getByTestId('case-point')).toHaveCount(1)
+  await expect(analyst.page.getByText('American rivals')).toHaveCount(0)
   // (9×9 + 7×7 + 7×8 + 8×8 + 5×5) ÷ 36 × 10 = 76
   await expect(analyst.page.getByTestId('score-panel').getByTestId('total-score')).toContainText('76')
 
@@ -78,6 +82,9 @@ test('research runs live and only verified quotes survive', async ({ users }) =>
   await expect(analyst.page.locator('[data-testid="activity-row"][data-kind="scored"]').first()).toContainText('76/100, with 5 of 6 quotes verified')
   await analyst.page.getByTestId('view-stages').click()
   await expect(analyst.page.locator('[data-testid="stage-column"][data-stage="screening"]')).toContainText('Tablo (sample)')
+  // And the map places it as a bubble that links to its scorecard.
+  await analyst.page.getByTestId('view-map').click()
+  await expect(analyst.page.getByTestId('map-bubble').filter({ hasText: 'Tablo (sample)' }).first()).toBeVisible()
 })
 
 test('the committee vote is blind until the reveal, then live for everyone', async ({ users }) => {
@@ -104,6 +111,11 @@ test('the committee vote is blind until the reveal, then live for everyone', asy
 
   // Reveal: both ballots appear on the other member's open page.
   await lead.page.getByTestId('reveal-button').click()
+  // The other member did nothing, and the result is announced on their screen. 1 vote each, conviction 4 against 2: Invest.
+  await expect(member.page.getByTestId('reveal-moment')).toContainText('Invest', { timeout: 20_000 })
+  await expect(member.page.getByTestId('reveal-moment')).toContainText('Invest 1 · Pass 1')
+  await member.page.getByRole('button', { name: 'See the ballots' }).click()
+  await lead.page.getByRole('button', { name: 'See the ballots' }).click()
   await expect(member.page.getByTestId('vote-result')).toContainText('Invest 1', { timeout: 20_000 })
   await expect(member.page.getByTestId('vote-result')).toContainText('Pass 1')
   await expect(member.page.getByTestId('ballot')).toHaveCount(2)
@@ -158,7 +170,8 @@ test('a member cannot manage a company someone else added, and cannot change the
   await member.page.getByLabel('Company name').fill('x')
   await member.page.getByLabel('Website').fill('localhost')
   const ownRequest = member.page.waitForRequest((r) => r.url().endsWith('/api/actions/addDeal'))
-  await member.page.getByRole('button', { name: 'Research it' }).click()
+  // The form's own button: the scouted companies below the pipeline have a "Research it" each as well.
+  await member.page.getByTestId('add-form').getByRole('button', { name: 'Research it' }).click()
   const authorization = (await ownRequest).headers()['authorization']
   await expect(member.page.getByTestId('form-error')).toContainText('address of the company website')
 

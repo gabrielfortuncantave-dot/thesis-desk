@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { digestEmailText } from './email'
 import { escapeLatex, memoLatex } from './pdf'
-import { checkScores, extractLinks, htmlToText, mentionsCompany, normalise, parseJson, pickUsefulLinks, toNewsItems, verifyQuote, type RawAnalysis, type Source } from './providers'
-import { coverage, tally, weightedScore } from './score'
+import { checkCase, checkScores, extractLinks, htmlToText, mentionsCompany, normalise, parseJson, pickUsefulLinks, toNewsItems, toSuggestions, verifyQuote, type RawAnalysis, type Source } from './providers'
+import { coverage, tally, verdict, weightedScore } from './score'
 import { DEFAULT_DESK, type CriterionScore, type Deal } from './types'
 import { cleanWebsiteUrl, safeHref } from './validate'
 import { timeAgo } from '../components/DeskLive'
@@ -43,6 +43,48 @@ describe('coverage and tally', () => {
       investConviction: 6,
       passConviction: 5,
     })
+  })
+})
+
+describe('verdict', () => {
+  it('follows the votes, then conviction, then calls a split', () => {
+    expect(verdict({ invest: 2, pass: 1, investConviction: 3, passConviction: 5 })).toBe('Invest')
+    expect(verdict({ invest: 1, pass: 2, investConviction: 5, passConviction: 2 })).toBe('Pass')
+    expect(verdict({ invest: 1, pass: 1, investConviction: 4, passConviction: 2 })).toBe('Invest')
+    expect(verdict({ invest: 1, pass: 1, investConviction: 3, passConviction: 3 })).toBe('Split')
+  })
+})
+
+describe('bull and bear case', () => {
+  const sources: Source[] = [{ id: 'S1', url: 'https://a.com', title: 'Home', text: 'Our customers stay with us for 5 years on average.' }]
+  it('keeps an argument only when its quote is in the source', () => {
+    const kept = checkCase(
+      [
+        { point: 'Customers stay for years.', source: 'S1', quote: 'Our customers stay with us for 5 years on average.' },
+        { point: 'Rivals are coming.', source: 'S1', quote: 'Two well-funded rivals announced their launch for next quarter.' },
+        { point: 'No proof at all.' },
+      ],
+      sources,
+    )
+    expect(kept).toEqual([{ point: 'Customers stay for years.', quote: 'Our customers stay with us for 5 years on average.', url: 'https://a.com', title: 'Home' }])
+  })
+  it('survives a missing or broken list', () => {
+    expect(checkCase(undefined, sources)).toEqual([])
+  })
+})
+
+describe('scout suggestions', () => {
+  it('keeps one clean entry per website, with the sentence that says what the company does', () => {
+    const found = toSuggestions([
+      { title: 'Thaïs PMS', url: 'https://thais-pms.com/', text: '# Thaïs PMS Thaïs PMS is a Software Development company. Thaïs PMS is a French hotel management software that runs bookings and billing.' },
+      { title: 'Celery - Helping Hospitality Hustle Harder', url: 'https://celeryhq.eu/en/', text: '# Celery Celery is an IT Services company. Celery is a workforce planning tool for restaurants and hotels in Europe.' },
+      { title: 'Thaïs again', url: 'https://thais-pms.com/pricing', text: 'duplicate site' },
+      { title: 'Bad', url: 'javascript:alert(1)', text: 'x' },
+    ])
+    expect(found).toEqual([
+      { name: 'Thaïs PMS', websiteUrl: 'https://thais-pms.com', why: 'Thaïs PMS is a French hotel management software that runs bookings and billing.' },
+      { name: 'Celery', websiteUrl: 'https://celeryhq.eu', why: 'Celery is a workforce planning tool for restaurants and hotels in Europe.' },
+    ])
   })
 })
 

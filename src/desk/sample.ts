@@ -96,6 +96,15 @@ const ANALYSIS: RawAnalysis = {
       evidence: [{ source: 'N2', quote: 'A group of 200 restaurant owners publicly contested the 1.2 percent fee Tablo introduced on card payments' }],
     },
   ],
+  bull: [
+    { point: 'Revenue repeats every month and the entry price is low enough to sell without a sales team.', source: 'S1', quote: 'Plans start at 89 euros per month, billed monthly, with no commitment.' },
+    { point: 'Customers stay for years, which makes each restaurant won worth far more than its first invoice.', source: 'S2', quote: 'Our customers stay with us for 5 years on average.' },
+  ],
+  bear: [
+    { point: 'A new fee has already set part of the customer base against the company.', source: 'N2', quote: 'some threatened to move to a competitor' },
+    // No such sentence exists in the sources: the server must drop this argument.
+    { point: 'Two larger competitors are about to enter its home market.', source: 'N1', quote: 'Two well-funded American rivals announced their launch in France for next quarter.' },
+  ],
   memo: {
     summary:
       'Tablo sells reservation, ordering and payment software to independent restaurants on a monthly subscription. It reports more than 4,200 restaurants in France, Spain and Italy and employs 140 people. It raised a 30 million euro Series B in June 2026 to enter Portugal and Greece.',

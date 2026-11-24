@@ -15,7 +15,7 @@ import { logActivity } from '../desk/activity'
 import { memoLatex } from '../desk/pdf'
 import { createRow, getRow, listRows, must, type Row } from '../desk/records'
 import { tally, weightedScore } from '../desk/score'
-import { DESK_ID, limitReached, loadDesk, queueResearch } from '../desk/start'
+import { DESK_ID, limitReached, loadDesk, queueResearch, scoutDesk } from '../desk/start'
 import { SAMPLE_COMPANY, STAGES, isSampleUrl, type Criterion, type Deal, type Desk, type Stage, type Vote } from '../desk/types'
 import { cleanText, cleanWebsiteUrl } from '../desk/validate'
 
@@ -76,6 +76,8 @@ export const actions: Record<string, ActionHandler<Env>> = {
       totalScore: null,
       previousScore: null,
       memo: null,
+      bull: [],
+      bear: [],
       news: [],
       isSample: sample ? 1 : 0,
       costUsd: 0,
@@ -202,6 +204,7 @@ export const actions: Record<string, ActionHandler<Env>> = {
     })
     if (criteria.every((c) => c.weight === 0)) return fail('At least one criterion needs a weight above zero.')
     const desk: Desk = {
+      ...current,
       thesisName: cleanText(params.thesisName, 60) || current.thesisName,
       thesisText: cleanText(params.thesisText, 600) || current.thesisText,
       criteria,
@@ -214,6 +217,16 @@ export const actions: Record<string, ActionHandler<Env>> = {
     }
     await logActivity(tools, { actorName: await displayName(tools, userId), kind: 'thesis', dealId: '', dealName: '', detail: '' })
     return { success: true, data: { reranked: deals.length } }
+  },
+
+  /** Search the web for companies matching the thesis and show them on the board. Admin only: it is a paid search. */
+  scoutNow: async ({ userId, tools, env }) => {
+    if ((await resolveAppRole(env, userId)) !== 'admin') return fail('Only an admin can run the scout. It also runs by itself every Monday.')
+    try {
+      return { success: true, data: { found: await scoutDesk(tools) } }
+    } catch (error) {
+      return fail(`The scout could not search: ${error instanceof Error ? error.message : String(error)}`)
+    }
   },
 
   /** Build the one-page memo as a PDF (LaTeX compiled by the latex-compiler integration). */

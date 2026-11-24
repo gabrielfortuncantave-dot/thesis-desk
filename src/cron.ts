@@ -6,6 +6,7 @@
  * board, and email each member a digest of the companies they added.
  * A scorecard is a snapshot; a funding round or a lawsuit the week after
  * changes the picture, and nobody re-reads a pipeline by hand.
+ * The same run asks the scout for new companies that match the thesis.
  */
 
 import type { CronTask } from 'deepspace/worker'
@@ -14,6 +15,7 @@ import type { Env } from '../worker'
 import { digestEmailText, sendEmail, type WatchedDeal } from './desk/email'
 import { getRow, type Row } from './desk/records'
 import { watchDealNews } from './desk/research'
+import { scoutDesk } from './desk/start'
 import type { Deal } from './desk/types'
 import { createActionTools } from './server/action-routes'
 
@@ -57,4 +59,11 @@ export async function runTask(name: string, env: Env): Promise<void> {
     sent += 1
   }
   console.info(`[cron] weekly-news-watch checked ${watched.length} companies, sent ${sent} digests`)
+
+  // Then look for fresh candidates, so the pipeline has something new every Monday.
+  try {
+    console.info(`[cron] scout found ${await scoutDesk(tools)} companies not yet on the desk`)
+  } catch (error) {
+    console.warn(`[cron] scout failed: ${error instanceof Error ? error.message : String(error)}`)
+  }
 }

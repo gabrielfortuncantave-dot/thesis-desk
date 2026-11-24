@@ -36,3 +36,10 @@ export function tally(votes: { decision: 'invest' | 'pass'; conviction: number }
   const sum = (list: typeof votes) => list.reduce((total, v) => total + v.conviction, 0)
   return { invest: invest.length, pass: pass.length, investConviction: sum(invest), passConviction: sum(pass) }
 }
+
+/** The committee's decision in one line, from the revealed ballots. Conviction breaks a tie in votes. */
+export function verdict(result: ReturnType<typeof tally>): 'Invest' | 'Pass' | 'Split' {
+  if (result.invest !== result.pass) return result.invest > result.pass ? 'Invest' : 'Pass'
+  if (result.investConviction !== result.passConviction) return result.investConviction > result.passConviction ? 'Invest' : 'Pass'
+  return 'Split'
+}

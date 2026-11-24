@@ -21,6 +21,8 @@ export const deskSchema: CollectionSchema = {
     { name: 'thesisName', storage: 'text', interpretation: 'plain' },
     { name: 'thesisText', storage: 'text', interpretation: 'plain' },
     { name: 'criteria', storage: 'text', interpretation: { kind: 'json' } },
+    { name: 'suggestions', storage: 'text', interpretation: { kind: 'json' } },
+    { name: 'scoutedAt', storage: 'text', interpretation: 'plain' },
   ],
   permissions: {
     '*': { read: true, ...SERVER_WRITES_ONLY },
@@ -46,6 +48,8 @@ export const dealsSchema: CollectionSchema = {
     { name: 'totalScore', storage: 'number', interpretation: 'plain' },
     { name: 'previousScore', storage: 'number', interpretation: 'plain' },
     { name: 'memo', storage: 'text', interpretation: { kind: 'json' } },
+    { name: 'bull', storage: 'text', interpretation: { kind: 'json' } },
+    { name: 'bear', storage: 'text', interpretation: { kind: 'json' } },
     { name: 'news', storage: 'text', interpretation: { kind: 'json' } },
     { name: 'isSample', storage: 'number', interpretation: { kind: 'boolean' } },
     { name: 'costUsd', storage: 'number', interpretation: 'plain' },

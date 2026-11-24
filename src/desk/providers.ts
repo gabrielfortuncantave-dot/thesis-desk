@@ -9,7 +9,7 @@
  */
 
 import type { ActionTools } from 'deepspace/worker'
-import type { Criterion, CriterionScore, Desk, Evidence, Memo, NewsItem, Profile } from './types'
+import type { CasePoint, Criterion, CriterionScore, Desk, Evidence, Memo, NewsItem, Profile, Suggestion } from './types'
 
 /** A result plus what the call cost, so each deal can report its own spend. */
 export interface Paid<T> {
@@ -38,6 +38,14 @@ export interface RawAnalysis {
   profile: Partial<Profile> | null
   scores: { key?: string; score?: number | null; rationale?: string; evidence?: { source?: string; quote?: string }[] }[]
   memo: Partial<Memo> | null
+  bull?: RawCasePoint[]
+  bear?: RawCasePoint[]
+}
+
+interface RawCasePoint {
+  point?: string
+  source?: string
+  quote?: string
 }
 
 export interface Providers {
@@ -47,6 +55,23 @@ export interface Providers {
   searchNews(companyName: string, since: string): Promise<Paid<Source[]>>
   /** Score the company against the thesis, citing quotes from the sources. */
   analyse(companyName: string, desk: Desk, sources: Source[]): Promise<Paid<RawAnalysis | null>>
+}
+
+/** Search the web for companies that match the thesis. Used by the scout, outside any single deal. */
+export async function scoutCompanies(tools: ActionTools, desk: Desk): Promise<Paid<Suggestion[]>> {
+  const r = await tools.integration<ScoutResponse>('exa/search', {
+    query: `${desk.thesisText} Company that matches: ${desk.thesisName}`.slice(0, 600),
+    category: 'company',
+    numResults: 12,
+    contents: { text: { maxCharacters: 400 } },
+  })
+  if (!r.success) throw new Error(`exa/search failed: ${r.error}`)
+  return { value: toSuggestions(r.data.results ?? []), costUsd: r.data.costUsd ?? 0 }
+}
+
+interface ScoutResponse {
+  results?: { title?: string; url?: string; text?: unknown }[]
+  costUsd?: number
 }
 
 const ANALYST_MODEL = 'gpt-5.4-mini'
@@ -205,7 +230,8 @@ export function analystInstructions(desk: Desk): string {
     'Reply with one JSON object and nothing else:',
     '{"profile":{"oneLiner","sector","businessModel","customers","headquarters","founded","size"},',
     ' "scores":[{"key","score","rationale","evidence":[{"source","quote"}]}],',
-    ' "memo":{"summary","fit","risks":[],"questions":[]}}',
+    ' "memo":{"summary","fit","risks":[],"questions":[]},',
+    ' "bull":[{"point","source","quote"}], "bear":[{"point","source","quote"}]}',
     'Rules:',
     '- One "scores" entry per criterion key. "rationale" is at most two sentences.',
     '- "evidence": one or two items. "source" is a source id (S1, N2…). "quote" is 8 to 30 words copied EXACTLY, character for character, from that source, in the language of the source. Do not translate, correct or merge sentences. Prefer a sentence that contains a number or a named fact.',
@@ -214,6 +240,7 @@ export function analystInstructions(desk: Desk): string {
     '- Profile fields are short strings; use "" when the sources do not say.',
     '- "summary": three sentences on what the company does. "fit": two plain declarative sentences on how it fits the thesis; if the sources do not confirm a part of the thesis, state that in its own sentence. Never write a question in "summary" or "fit".',
     '- "risks": three short risks. "questions": three questions to ask management, on what the sources leave open.',
+    '- "bull": the three strongest reasons to invest. "bear": the three strongest reasons to pass. Argue each side as hard as an advocate would. Each "point" is one sentence in your own words (do not repeat the quote inside it) and must rest on a "quote" copied exactly from the "source", under the same rules as evidence.',
   ].join('\n')
 }
 
@@ -384,6 +411,43 @@ export function rejectedQuotes(raw: RawAnalysis | null, sources: Source[]): stri
     }
   }
   return rejected
+}
+
+/** Bull or bear points, kept only when their quote is verified. An argument with no proof is not shown. */
+export function checkCase(raw: RawCasePoint[] | undefined, sources: Source[]): CasePoint[] {
+  const byId = new Map(sources.map((s) => [s.id, s]))
+  const kept: CasePoint[] = []
+  for (const item of Array.isArray(raw) ? raw : []) {
+    const source = byId.get(String(item?.source))
+    if (typeof item?.point !== 'string' || typeof item.quote !== 'string' || !source || !verifyQuote(item.quote, source)) continue
+    kept.push({ point: item.point.trim().slice(0, 240), quote: item.quote.trim().slice(0, 320), url: source.url, title: source.title })
+  }
+  return kept.slice(0, 3)
+}
+
+/** Search results become suggestions: one per website, named cleanly, with a one-line reason. */
+export function toSuggestions(results: { title?: string; url?: string; text?: unknown }[]): Suggestion[] {
+  const seen = new Set<string>()
+  const suggestions: Suggestion[] = []
+  for (const r of results) {
+    let origin: string
+    try {
+      const u = new URL(String(r.url))
+      if (u.protocol !== 'https:' && u.protocol !== 'http:') continue
+      origin = u.origin
+    } catch {
+      continue
+    }
+    const name = String(r.title ?? '').split(/\s+[-|–·:]\s+|\s*\(/)[0].trim().slice(0, 60)
+    if (!name || seen.has(origin)) continue
+    seen.add(origin)
+    // Exa's company cards read "# Name Name is a Software Development company. Name is a …": keep what follows.
+    const body = asText(r.text).replace(/^#\s*/, '').replace(/\s+/g, ' ').trim()
+    const sentences = body.split(/(?<=\.)\s+/).filter((sentence) => !/ is an? [^.]{0,60} company\.$/i.test(sentence))
+    const why = (sentences.find((sentence) => sentence.toLowerCase().includes(name.toLowerCase().split(' ')[0]) && sentence.length > 40) ?? sentences[0] ?? '').slice(0, 200)
+    suggestions.push({ name, websiteUrl: origin, why })
+  }
+  return suggestions
 }
 
 const text = (value: unknown, max: number) => (typeof value === 'string' ? value.trim().slice(0, max) : '')

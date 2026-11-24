@@ -13,10 +13,20 @@ export interface Criterion {
   guide: string
 }
 
+/** A company the desk found on the web by searching for the thesis. Not researched yet. */
+export interface Suggestion {
+  name: string
+  websiteUrl: string
+  why: string
+}
+
 export interface Desk {
   thesisName: string
   thesisText: string
   criteria: Criterion[]
+  /** Filled by the scout (Monday task, or the owner's "Scout now" button). */
+  suggestions?: Suggestion[]
+  scoutedAt?: string
 }
 
 /** The desk a fresh app starts with. The owner can change it on the Owner page. */
@@ -63,6 +73,14 @@ export interface CriterionScore {
   dropped?: number
 }
 
+/** One argument for or against investing, resting on a verified quote like every score. */
+export interface CasePoint {
+  point: string
+  quote: string
+  url: string
+  title: string
+}
+
 export interface Profile {
   oneLiner: string
   sector: string
@@ -105,6 +123,9 @@ export interface Deal {
   /** The total before the latest research run, to show how the picture moved. */
   previousScore: number | null
   memo: Memo | null
+  /** The strongest verified arguments for and against, shown side by side before the vote. */
+  bull: CasePoint[]
+  bear: CasePoint[]
   news: NewsItem[]
   isSample: number
   costUsd: number

@@ -16,7 +16,7 @@ import type { ActionTools } from 'deepspace/worker'
 import type { Env } from '../../worker'
 import { createActionTools } from '../server/action-routes'
 import { logActivity } from './activity'
-import { checkScores, liveProviders, rejectedQuotes, toMemo, toNewsItems, toProfile, type Providers } from './providers'
+import { checkCase, checkScores, liveProviders, rejectedQuotes, toMemo, toNewsItems, toProfile, type Providers } from './providers'
 import { getRow, must, type Row } from './records'
 import { sampleProviders } from './sample'
 import { weightedScore } from './score'
@@ -83,6 +83,8 @@ export async function researchDeal(env: Env, dealId: string): Promise<{ totalSco
         log,
         profile: toProfile(analysis.value),
         memo: toMemo(analysis.value),
+        bull: checkCase(analysis.value.bull, sources),
+        bear: checkCase(analysis.value.bear, sources),
         scores,
         totalScore,
         previousScore: deal.data.totalScore ?? null,

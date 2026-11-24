@@ -253,3 +253,16 @@
 @media (prefers-reduced-motion: reduce) {
   .desk-pulse { animation: none; }
 }
+
+/* The reveal announcement fades and rises in; still, instant, with reduced motion. */
+@keyframes reveal-in {
+  from { opacity: 0; }
+}
+@keyframes reveal-rise {
+  from { opacity: 0; transform: translateY(18px) scale(0.97); }
+}
+.reveal-moment { animation: reveal-in 0.25s ease-out; }
+.reveal-moment > div { animation: reveal-rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .reveal-moment, .reveal-moment > div { animation: none; }
+}

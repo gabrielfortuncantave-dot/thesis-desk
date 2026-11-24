@@ -66,6 +66,12 @@ ${escapeLatex(deal.memo?.fit ?? '')}
 ${rows}
 \\end{tabularx}
 
+\\section*{The case for}
+${items((deal.bull ?? []).map((p) => p.point))}
+
+\\section*{The case against}
+${items((deal.bear ?? []).map((p) => p.point))}
+
 \\section*{Risks}
 ${items(deal.memo?.risks ?? [])}
 

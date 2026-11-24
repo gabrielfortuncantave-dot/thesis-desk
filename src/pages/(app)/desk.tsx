@@ -13,6 +13,7 @@ import { useQuery, useUser } from 'deepspace'
 import { Button, Input, Label, useToast } from '@/components/ui'
 import { CriteriaBars, StageChip, TotalScore } from '../../components/Score'
 import { ActivityFeed, PresenceLine } from '../../components/DeskLive'
+import { MarketMap } from '../../components/MarketMap'
 import { SignInPrompt } from '../../components/SignInPrompt'
 import { callAction } from '../../lib/actions'
 import { useDesk } from '../../lib/desk'
@@ -28,7 +29,7 @@ export default function DeskPage() {
   const toast = useToast()
   const deals = useQuery<Deal>('deals', { orderBy: 'createdAt', orderDir: 'desc', limit: 200 })
   const [stage, setStage] = useState<Stage | 'all'>('all')
-  const [view, setView] = useState<'ranked' | 'stages'>('ranked')
+  const [view, setView] = useState<'ranked' | 'stages' | 'map'>('ranked')
   // Up to three companies ticked for the side-by-side comparison.
   const [picked, setPicked] = useState<string[]>([])
   const togglePick = (id: string) => setPicked((now) => (now.includes(id) ? now.filter((x) => x !== id) : now.length < 3 ? [...now, id] : now))
@@ -94,6 +95,7 @@ export default function DeskPage() {
                     [
                       ['ranked', 'Ranked'],
                       ['stages', 'By stage'],
+                      ['map', 'Map'],
                     ] as const
                   ).map(([id, label]) => (
                     <button
@@ -109,7 +111,7 @@ export default function DeskPage() {
                   ))}
                 </div>
               </div>
-              <div className={`flex flex-wrap gap-1 ${view === 'stages' ? 'hidden' : ''}`} role="tablist" aria-label="Filter by stage">
+              <div className={`flex flex-wrap gap-1 ${view === 'ranked' ? '' : 'hidden'}`} role="tablist" aria-label="Filter by stage">
                 {[{ id: 'all', label: 'All' } as const, ...STAGES].map((s) => (
                   <button
                     key={s.id}
@@ -139,6 +141,15 @@ export default function DeskPage() {
               <p className="mt-6 text-sm text-muted-foreground">
                 {stage === 'all' ? 'No company yet. Add the first one on the right.' : 'No company at this stage.'}
               </p>
+            ) : view === 'map' ? (
+              <div className="mt-4">
+                <MarketMap
+                  criteria={criteria}
+                  companies={deals.records
+                    .filter((d) => d.data.status === 'done')
+                    .map((d) => ({ id: d.recordId, name: d.data.name, scores: d.data.scores ?? [], total: weightedScore(d.data.scores ?? [], criteria) }))}
+                />
+              </div>
             ) : view === 'stages' ? (
               <div className="mt-4 grid gap-3 overflow-x-auto pb-2 [grid-template-columns:repeat(5,minmax(8.5rem,1fr))]" data-testid="stage-board">
                 {STAGES.map((column) => {
@@ -257,6 +268,37 @@ export default function DeskPage() {
                   )}
                 </span>
               </div>
+            )}
+            {(desk.suggestions ?? []).length > 0 && (
+              <section className="mt-10" aria-labelledby="scout-title" data-testid="scouted">
+                <h2 id="scout-title" className="font-display text-2xl">
+                  Scouted for this thesis
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  The desk searched the web for companies that match the thesis{desk.scoutedAt ? ` on ${new Date(desk.scoutedAt).toLocaleDateString()}` : ''}. They are not researched yet: one click
+                  puts a company through the analyst.
+                </p>
+                <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {(desk.suggestions ?? [])
+                    .filter((sug) => !deals.records.some((d) => d.data.websiteUrl.replace(/^https?:\/\/(www\.)?/, '') === sug.websiteUrl.replace(/^https?:\/\/(www\.)?/, '')))
+                    .map((sug) => (
+                      <li key={sug.websiteUrl} data-testid="suggestion" className="flex flex-col rounded-md border border-dashed border-border p-4">
+                        <p className="font-display text-lg">{sug.name}</p>
+                        <p className="mt-1 flex-1 text-sm text-muted-foreground">{sug.why}</p>
+                        <p className="mt-3 flex items-center justify-between gap-3 text-sm">
+                          <a href={sug.websiteUrl} target="_blank" rel="noreferrer" className="truncate text-muted-foreground underline underline-offset-4">
+                            {sug.websiteUrl.replace(/^https?:\/\//, '')}
+                          </a>
+                          {user && (
+                            <button type="button" disabled={busy} onClick={() => void add({ name: sug.name, websiteUrl: sug.websiteUrl })} className="shrink-0 font-medium text-primary underline underline-offset-4 disabled:opacity-50">
+                              Research it
+                            </button>
+                          )}
+                        </p>
+                      </li>
+                    ))}
+                </ul>
+              </section>
             )}
             <p className="mt-6 text-xs text-muted-foreground">
               Scores come from an AI analyst reading public pages. A criterion is scored only when a quoted sentence was

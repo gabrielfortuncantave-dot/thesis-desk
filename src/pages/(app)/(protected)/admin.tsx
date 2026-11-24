@@ -22,6 +22,7 @@ export default function AdminPage() {
   const cron = useCronMonitor(SCOPE_ID)
   const deals = useQuery<Deal>('deals', { orderBy: 'createdAt', orderDir: 'desc', limit: 200 })
   const [result, setResult] = useState('')
+  const [scout, setScout] = useState('')
 
   if (user?.role !== 'admin') {
     return <div className="mx-auto max-w-3xl px-6 py-12 text-sm text-muted-foreground">This page is for the desk owner.</div>
@@ -84,6 +85,32 @@ export default function AdminPage() {
                 </li>
               ))}
             </ul>
+          )}
+        </section>
+
+        <section className="mt-8 rounded-md border border-border bg-card p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-display text-xl">Scout</h2>
+            <Button
+              variant="secondary"
+              data-testid="scout-button"
+              onClick={async () => {
+                setScout('Searching the web…')
+                const reply = await callAction<{ found: number }>('scoutNow', {})
+                setScout(reply.success ? `Found ${reply.data.found} companies that are not on the desk yet. They are on the pipeline page.` : reply.error)
+              }}
+            >
+              Scout now
+            </Button>
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Searches the web for companies that match the thesis and lists them under the pipeline. Runs by itself every Monday after the news watch.
+            {desk.scoutedAt && ` Last run ${new Date(desk.scoutedAt).toLocaleString()}.`}
+          </p>
+          {scout && (
+            <p className="mt-3 text-sm" aria-live="polite" data-testid="scout-result">
+              {scout}
+            </p>
           )}
         </section>
 
