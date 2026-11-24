@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { digestEmailText } from './email'
 import { escapeLatex, memoLatex } from './pdf'
-import { checkCase, checkScores, extractLinks, htmlToText, mentionsCompany, normalise, parseJson, pickUsefulLinks, toNewsItems, toSuggestions, verifyQuote, type RawAnalysis, type Source } from './providers'
+import { analystInstructions, checkCase, checkOpener, checkScores, extractLinks, htmlToText, mentionsCompany, normalise, parseJson, pickUsefulLinks, toNewsItems, toSuggestions, verifyQuote, type RawAnalysis, type Source } from './providers'
 import { coverage, tally, verdict, weightedScore } from './score'
-import { DEFAULT_DESK, type CriterionScore, type Deal } from './types'
+import { DEFAULT_DESK, PLAYBOOKS, playbookOf, type CriterionScore, type Deal, type Desk } from './types'
 import { cleanWebsiteUrl, safeHref } from './validate'
 import { timeAgo } from '../components/DeskLive'
 
-const criteria = DEFAULT_DESK.criteria
+// The numeric examples below use the investment playbook's five criteria.
+const PE_DESK: Desk = { playbook: 'pe', ...PLAYBOOKS.pe.desk }
+const criteria = PE_DESK.criteria
 const scoreOf = (key: string, score: number | null): CriterionScore => ({ key, score, rationale: '', evidence: [] })
 
 describe('weightedScore', () => {
@@ -43,6 +45,38 @@ describe('coverage and tally', () => {
       investConviction: 6,
       passConviction: 5,
     })
+  })
+})
+
+describe('playbooks', () => {
+  it('a fresh desk runs the go-to-market playbook', () => {
+    expect(playbookOf(DEFAULT_DESK)).toMatchObject({ id: 'gtm', yes: 'Pursue', no: 'Skip', wantsOpener: true })
+    expect(playbookOf(null).id).toBe('gtm')
+    expect(playbookOf(PE_DESK)).toMatchObject({ yes: 'Invest', no: 'Pass', wantsOpener: false })
+  })
+  it('every playbook names all five stages and gives each criterion a unique key', () => {
+    for (const playbook of Object.values(PLAYBOOKS)) {
+      expect(Object.keys(playbook.stageLabels).sort()).toEqual(['committee', 'invested', 'passed', 'screening', 'sourced'])
+      const keys = playbook.desk.criteria.map((c) => c.key)
+      expect(new Set(keys).size).toBe(keys.length)
+    }
+  })
+  it('only the go-to-market analyst is asked for a first message, and both are told sources are untrusted', () => {
+    expect(analystInstructions(DEFAULT_DESK)).toContain('"opener"')
+    expect(analystInstructions(PE_DESK)).not.toContain('"opener"')
+    for (const desk of [DEFAULT_DESK, PE_DESK]) expect(analystInstructions(desk)).toContain('untrusted web pages')
+  })
+})
+
+describe('draft first message', () => {
+  const sources: Source[] = [{ id: 'S1', url: 'https://a.com', title: 'Home', text: 'We are looking for tool partners for the 2027 season.' }]
+  const raw = (quote: string): RawAnalysis => ({ profile: null, scores: [], memo: { opener: { text: 'We saw you are looking for partners. Could we help?', source: 'S1', quote } } })
+  it('is kept when the fact it mentions is a verified quote', () => {
+    expect(checkOpener(raw('We are looking for tool partners for the 2027 season.'), sources)).toMatchObject({ text: 'We saw you are looking for partners. Could we help?', url: 'https://a.com' })
+  })
+  it('is dropped when the fact is invented, or when there is no opener', () => {
+    expect(checkOpener(raw('You won the best hackathon award last year in Berlin.'), sources)).toBeNull()
+    expect(checkOpener({ profile: null, scores: [], memo: {} }, sources)).toBeNull()
   })
 })
 
@@ -222,7 +256,7 @@ describe('PDF memo', () => {
       memo: { summary: 'S', fit: 'F', risks: ['R1'], questions: ['Q1'] },
       scores: [{ key: 'recurring', score: 8, rationale: 'Subscription', evidence: [{ quote: 'Plans start at 89 euros', url: 'u', title: 't' }] }],
     } as unknown as Deal
-    const tex = memoLatex(deal, DEFAULT_DESK, '2026-11-23')
+    const tex = memoLatex(deal, PE_DESK, '2026-11-23')
     expect(tex).toContain('\\begin{document}')
     expect(tex).toContain('Tablo \\& Co')
     expect(tex).toContain('80/100')

@@ -1,5 +1,4 @@
 import type { Criterion, CriterionScore, Stage } from '../desk/types'
-import { STAGES } from '../desk/types'
 
 /** Colour follows the score, but the number is always printed: never colour alone. */
 export function scoreTone(score: number | null | undefined, outOf: 10 | 100): string {
@@ -117,11 +116,10 @@ export function RadarChart({ series, criteria }: { series: RadarSeries[]; criter
   )
 }
 
-export function StageChip({ stage }: { stage: Stage }) {
-  const label = STAGES.find((s) => s.id === stage)?.label ?? stage
+export function StageChip({ stage, label }: { stage: Stage; label: string }) {
   const tone = stage === 'invested' ? 'bg-positive/15 text-positive' : stage === 'passed' ? 'bg-muted text-muted-foreground' : 'bg-accent text-accent-foreground'
   return (
-    <span data-testid="stage-chip" className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${tone}`}>
+    <span data-testid="stage-chip" data-stage={stage} className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${tone}`}>
       {label}
     </span>
   )

@@ -29,28 +29,132 @@ export interface Desk {
   scoutedAt?: string
 }
 
-/** The desk a fresh app starts with. The owner can change it on the Owner page. */
-export const DEFAULT_DESK: Desk = {
-  thesisName: 'European vertical software',
-  thesisText:
-    'Founder-led B2B software companies in Europe that serve one industry deeply (restaurants, hotels, clinics, construction, logistics…), ' +
-    'sell on subscription, and are the system their customers run the business on.',
-  criteria: [
-    { key: 'recurring', label: 'Recurring revenue', weight: 9, guide: 'Subscription or usage pricing, contracts, payments or other revenue that repeats without a new sale.' },
-    { key: 'position', label: 'Market position', weight: 7, guide: 'Customer count, named customers, countries served, leadership claims backed by numbers.' },
-    { key: 'growth', label: 'Growth signals', weight: 7, guide: 'Funding rounds, hiring, new markets, acquisitions, product launches in the last 12 months.' },
-    { key: 'stickiness', label: 'Product stickiness', weight: 8, guide: 'Is the product the system of record? Integrations, breadth of modules, switching cost.' },
-    { key: 'risk', label: 'Low risk profile', weight: 5, guide: '10 = no visible red flag. Lower for layoffs, litigation, regulatory exposure, dependence on one platform or customer.' },
-  ],
+/** A company the desk found on the web by searching for the thesis. Not researched yet. */
+export interface Suggestion {
+  name: string
+  websiteUrl: string
+  why: string
 }
 
-export const STAGES = [
-  { id: 'sourced', label: 'Sourced' },
-  { id: 'screening', label: 'Screening' },
-  { id: 'committee', label: 'Committee' },
-  { id: 'invested', label: 'Invested' },
-  { id: 'passed', label: 'Passed' },
-] as const
+export type PlaybookId = 'gtm' | 'pe'
+
+export interface Desk {
+  /** Which playbook the desk runs: it sets the vocabulary and what the analyst is asked for. */
+  playbook?: PlaybookId
+  thesisName: string
+  thesisText: string
+  criteria: Criterion[]
+  /** Filled by the scout (Monday task, or the owner's "Scout now" button). */
+  suggestions?: Suggestion[]
+  scoutedAt?: string
+}
+
+/**
+ * A playbook turns the same engine (research, verified scoring, blind vote)
+ * into a tool for one kind of decision. Everything a team would want to word
+ * differently lives here, so adding a playbook is adding one entry.
+ */
+export interface Playbook {
+  id: PlaybookId
+  label: string
+  /** Heading above the thesis on the board. */
+  thesisLabel: string
+  /** Who the analyst is, for the model. */
+  analyst: string
+  /** The two decisions of the blind vote (stored as 'invest' / 'pass' whatever they are called). */
+  yes: string
+  no: string
+  voteTitle: string
+  forTitle: string
+  againstTitle: string
+  briefTitle: string
+  risksTitle: string
+  questionsTitle: string
+  /** Display names of the five pipeline stages. */
+  stageLabels: Record<Stage, string>
+  /** Whether the analyst also drafts a first outreach message. */
+  wantsOpener: boolean
+  example: { name: string; websiteUrl: string }
+  /** The thesis and criteria a desk starts with under this playbook. */
+  desk: Pick<Desk, 'thesisName' | 'thesisText' | 'criteria'>
+}
+
+export const PLAYBOOKS: Record<PlaybookId, Playbook> = {
+  gtm: {
+    id: 'gtm',
+    label: 'Go-to-market targets',
+    thesisLabel: 'Go-to-market thesis',
+    analyst: 'You are a go-to-market analyst deciding which organisations a team should approach first, as partners or as customers.',
+    yes: 'Pursue',
+    no: 'Skip',
+    voteTitle: 'Team call',
+    forTitle: 'Why they would say yes',
+    againstTitle: 'Why they would say no',
+    briefTitle: 'Account brief',
+    risksTitle: 'Objections to expect',
+    questionsTitle: 'Questions for the first call',
+    stageLabels: { sourced: 'Found', screening: 'Qualified', committee: 'Decided', invested: 'Won', passed: 'Dropped' },
+    wantsOpener: true,
+    example: { name: 'Build Club', websiteUrl: 'https://buildclub.ai' },
+    desk: {
+      thesisName: 'First partners for a platform where AI agents ship full-stack apps',
+      thesisText:
+        'We are a developer platform that lets a coding agent build and deploy a full-stack app (sign-in, live data, hosting) without setup. ' +
+        'We want the communities, programs and tools whose members build and ship small web apps with AI: hackathon organisers, student builder clubs, bootcamps and AI coding tools. ' +
+        'A good target puts our platform in front of people on the day they need to ship something.',
+      criteria: [
+        { key: 'builders', label: 'Audience of builders', weight: 9, guide: 'Evidence that its members or users build and ship software projects: demos, hackathons, project showcases, cohorts.' },
+        { key: 'agents', label: 'AI-agent native', weight: 8, guide: 'Uses, teaches or promotes AI coding tools and agents (Claude, Cursor, Copilot, vibe coding, MCP).' },
+        { key: 'gap', label: 'Feels the shipping gap', weight: 8, guide: 'Signs that members struggle with or care about deployment, hosting, sign-in, databases, going from prototype to live app.' },
+        { key: 'reach', label: 'Reach', weight: 6, guide: 'Numbers: members, participants, students, events per year, cities, followers.' },
+        { key: 'timing', label: 'Timing signal', weight: 6, guide: 'Something dated in the last 12 months that gives a reason to reach out now: an upcoming event, a new cohort, a launch, funding.' },
+        { key: 'openness', label: 'Open to partners', weight: 5, guide: 'Sponsors, partner or perks pages, a call for partners, named existing tool partners.' },
+      ],
+    },
+  },
+  pe: {
+    id: 'pe',
+    label: 'Investment screening',
+    thesisLabel: 'Investment thesis',
+    analyst: 'You are a private equity analyst screening a company against an investment thesis.',
+    yes: 'Invest',
+    no: 'Pass',
+    voteTitle: 'Committee vote',
+    forTitle: 'Why invest',
+    againstTitle: 'Why pass',
+    briefTitle: 'Screening memo',
+    risksTitle: 'Risks',
+    questionsTitle: 'Questions for management',
+    stageLabels: { sourced: 'Sourced', screening: 'Screening', committee: 'Committee', invested: 'Invested', passed: 'Passed' },
+    wantsOpener: false,
+    example: { name: 'Zenchef', websiteUrl: 'https://www.zenchef.com' },
+    desk: {
+      thesisName: 'European vertical software',
+      thesisText:
+        'Founder-led B2B software companies in Europe that serve one industry deeply (restaurants, hotels, clinics, construction, logistics…), ' +
+        'sell on subscription, and are the system their customers run the business on.',
+      criteria: [
+        { key: 'recurring', label: 'Recurring revenue', weight: 9, guide: 'Subscription or usage pricing, contracts, payments or other revenue that repeats without a new sale.' },
+        { key: 'position', label: 'Market position', weight: 7, guide: 'Customer count, named customers, countries served, leadership claims backed by numbers.' },
+        { key: 'growth', label: 'Growth signals', weight: 7, guide: 'Funding rounds, hiring, new markets, acquisitions, product launches in the last 12 months.' },
+        { key: 'stickiness', label: 'Product stickiness', weight: 8, guide: 'Is the product the system of record? Integrations, breadth of modules, switching cost.' },
+        { key: 'risk', label: 'Low risk profile', weight: 5, guide: '10 = no visible red flag. Lower for layoffs, litigation, regulatory exposure, dependence on one platform or customer.' },
+      ],
+    },
+  },
+}
+
+export const DEFAULT_PLAYBOOK: PlaybookId = 'gtm'
+
+/** The desk a fresh app starts with. The owner can change it, or load another playbook, on the Owner page. */
+export const DEFAULT_DESK: Desk = { playbook: DEFAULT_PLAYBOOK, ...PLAYBOOKS[DEFAULT_PLAYBOOK].desk }
+
+export function playbookOf(desk: Pick<Desk, 'playbook'> | null | undefined): Playbook {
+  return PLAYBOOKS[desk?.playbook ?? DEFAULT_PLAYBOOK] ?? PLAYBOOKS[DEFAULT_PLAYBOOK]
+}
+
+/** Stage ids are fixed (they are stored on every deal); what each one is called comes from the playbook. */
+export const STAGES = [{ id: 'sourced' }, { id: 'screening' }, { id: 'committee' }, { id: 'invested' }, { id: 'passed' }] as const
 
 export type Stage = (typeof STAGES)[number]['id']
 
@@ -96,6 +200,8 @@ export interface Memo {
   fit: string
   risks: string[]
   questions: string[]
+  /** A draft first message, kept only when the fact it mentions was verified. The app never sends it. */
+  opener?: (CasePoint & { text: string }) | null
 }
 
 export interface NewsItem {
@@ -151,7 +257,7 @@ export interface Vote {
 }
 
 /** Reserved website address of the sample company: its research is canned and free. */
-export const SAMPLE_COMPANY = { name: 'Tablo (sample)', websiteUrl: 'https://sample-company.example' } as const
+export const SAMPLE_COMPANY = { name: 'Buildfest (sample)', websiteUrl: 'https://sample-company.example' } as const
 
 export function isSampleUrl(url: string): boolean {
   return url === SAMPLE_COMPANY.websiteUrl

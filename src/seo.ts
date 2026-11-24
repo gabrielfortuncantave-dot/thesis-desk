@@ -23,9 +23,9 @@
 declare const __DEEPSPACE_SITE_ORIGIN__: string | undefined
 
 export const seo = {
-  title: 'Thesis Desk | Screen companies against your investment thesis',
+  title: 'Thesis Desk | Know who to go after, with the proof attached',
   description:
-    'Thesis Desk scores companies against an investment thesis with evidence quoted from public sources, ranks the pipeline and runs a blind committee vote.',
+    'Thesis Desk finds organisations that match your thesis, scores them with evidence quoted from public pages, drafts a first message and runs a blind team vote.',
   /** Public origin for canonical URLs, og:url, and the sitemap — no trailing
    *  slash. Replace with the custom domain once one is attached, e.g.
    *  'https://www.example.com'. */

@@ -18,6 +18,7 @@ const SERVER_WRITES_ONLY = { create: false, update: false, delete: false } as co
 export const deskSchema: CollectionSchema = {
   name: 'desk',
   columns: [
+    { name: 'playbook', storage: 'text', interpretation: 'plain' },
     { name: 'thesisName', storage: 'text', interpretation: 'plain' },
     { name: 'thesisText', storage: 'text', interpretation: 'plain' },
     { name: 'criteria', storage: 'text', interpretation: { kind: 'json' } },

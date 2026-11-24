@@ -2,7 +2,7 @@
  * Queueing research, and the spend limits in front of it.
  *
  * Researching one company spends the app owner's DeepSpace credits (about
- * $0.10), so two limits apply before a job is queued:
+ * $0.05), so two limits apply before a job is queued:
  *   - per user:  MAX_USER_RUNS_PER_DAY research runs per rolling 24 hours;
  *   - whole app: MAX_APP_RUNS_PER_DAY, so no crowd can drain the balance.
  * The sample company costs nothing and is not counted.
@@ -15,8 +15,8 @@ import { scoutCompanies } from './providers'
 import { DEFAULT_DESK, type Deal, type Desk } from './types'
 import { getRow, listRows, must, type Row } from './records'
 
-export const MAX_USER_RUNS_PER_DAY = 3
-export const MAX_APP_RUNS_PER_DAY = 12
+export const MAX_USER_RUNS_PER_DAY = 5
+export const MAX_APP_RUNS_PER_DAY = 15
 const DAY_MS = 24 * 60 * 60 * 1000
 
 /** The shared desk lives in one row with a fixed id. */

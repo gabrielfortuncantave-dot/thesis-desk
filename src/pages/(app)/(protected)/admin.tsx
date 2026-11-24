@@ -12,12 +12,14 @@ import { useCronMonitor, useQuery, useUser } from 'deepspace'
 import { Button, Input, Label, Textarea, useToast } from '@/components/ui'
 import { SCOPE_ID } from '../../../constants'
 import { callAction } from '../../../lib/actions'
-import { useDesk } from '../../../lib/desk'
+import { useDesk, usePlaybook } from '../../../lib/desk'
+import { PLAYBOOKS } from '../../../desk/types'
 import type { Deal } from '../../../desk/types'
 
 export default function AdminPage() {
   const { user } = useUser()
   const desk = useDesk()
+  const words = usePlaybook()
   const toast = useToast()
   const cron = useCronMonitor(SCOPE_ID)
   const deals = useQuery<Deal>('deals', { orderBy: 'createdAt', orderDir: 'desc', limit: 200 })
@@ -54,7 +56,7 @@ export default function AdminPage() {
                 <li key={task.name} className="flex flex-wrap items-center justify-between gap-3">
                   <span>
                     <span className="font-medium">{task.name}</span>
-                    <span className="text-muted-foreground"> · Mondays 08:00 Paris time · companies in Screening or Committee</span>
+                    <span className="text-muted-foreground"> · Mondays 08:00 Paris time · targets in the second and third stage</span>
                   </span>
                   <Button
                     variant="secondary"
@@ -86,6 +88,33 @@ export default function AdminPage() {
               ))}
             </ul>
           )}
+        </section>
+
+        <section className="mt-8 rounded-md border border-border bg-card p-6">
+          <h2 className="font-display text-xl">Playbook</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            The same engine serves different decisions. Loading a playbook replaces the thesis, the criteria and the wording; targets already
+            scored must be researched again.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {Object.values(PLAYBOOKS).map((p) => (
+              <Button
+                key={p.id}
+                variant={p.id === words.id ? 'default' : 'secondary'}
+                disabled={p.id === words.id}
+                data-testid={`playbook-${p.id}`}
+                onClick={async () => {
+                  if (!window.confirm(`Load the "${p.label}" playbook? The current thesis and criteria will be replaced.`)) return
+                  const reply = await callAction('loadPlaybook', { playbook: p.id })
+                  if (!reply.success) toast.warning('Not changed', reply.error)
+                  else toast.success('Playbook loaded', p.label)
+                }}
+              >
+                {p.label}
+                {p.id === words.id ? ' (current)' : ''}
+              </Button>
+            ))}
+          </div>
         </section>
 
         <section className="mt-8 rounded-md border border-border bg-card p-6">

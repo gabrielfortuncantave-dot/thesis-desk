@@ -16,7 +16,7 @@ import { memoLatex } from '../desk/pdf'
 import { createRow, getRow, listRows, must, type Row } from '../desk/records'
 import { tally, weightedScore } from '../desk/score'
 import { DESK_ID, limitReached, loadDesk, queueResearch, scoutDesk } from '../desk/start'
-import { SAMPLE_COMPANY, STAGES, isSampleUrl, type Criterion, type Deal, type Desk, type Stage, type Vote } from '../desk/types'
+import { PLAYBOOKS, SAMPLE_COMPANY, STAGES, isSampleUrl, playbookOf, type Criterion, type Deal, type Desk, type Stage, type Vote } from '../desk/types'
 import { cleanText, cleanWebsiteUrl } from '../desk/validate'
 
 const fail = (error: string) => ({ success: false as const, error })
@@ -116,9 +116,10 @@ export const actions: Record<string, ActionHandler<Env>> = {
     const target = STAGES.find((s) => s.id === params.stage)
     if (!target) return fail('Unknown stage.')
     const stage: Stage = target.id
+    const words = playbookOf(await loadDesk(tools))
     if (stage === deal.data.stage) return { success: true, data: { stage } }
     must(await tools.update('deals', deal.recordId, { stage }), 'set stage')
-    await logActivity(tools, { actorName: await displayName(tools, userId), kind: 'stage', dealId: deal.recordId, dealName: deal.data.name, detail: target.label })
+    await logActivity(tools, { actorName: await displayName(tools, userId), kind: 'stage', dealId: deal.recordId, dealName: deal.data.name, detail: words.stageLabels[stage] })
     return { success: true, data: { stage } }
   },
 
@@ -132,7 +133,7 @@ export const actions: Record<string, ActionHandler<Env>> = {
     const decision = params.decision === 'invest' || params.decision === 'pass' ? params.decision : null
     const conviction = Math.round(Number(params.conviction))
     const reason = cleanText(params.reason, 400)
-    if (!decision) return fail('Choose Invest or Pass.')
+    if (!decision) return fail('Choose one of the two decisions.')
     if (!(conviction >= 1 && conviction <= 5)) return fail('Conviction goes from 1 to 5.')
     if (reason.length < 10) return fail('Give your reason in a sentence. A vote without a reason is not counted.')
 
@@ -165,12 +166,13 @@ export const actions: Record<string, ActionHandler<Env>> = {
     must(await tools.update('deals', deal.recordId, { voting: 'revealed', stage: 'committee' }), 'close vote')
     for (const vote of votes) must(await tools.update('votes', vote.recordId, { revealed: 'yes' }), 'reveal vote')
     const result = tally(votes.map((v) => v.data))
+    const words = playbookOf(await loadDesk(tools))
     await logActivity(tools, {
       actorName: await displayName(tools, userId),
       kind: 'revealed',
       dealId: deal.recordId,
       dealName: deal.data.name,
-      detail: `Invest ${result.invest}, Pass ${result.pass}`,
+      detail: `${words.yes} ${result.invest}, ${words.no} ${result.pass}`,
     })
     return { success: true, data: { revealed: votes.length } }
   },
@@ -217,6 +219,23 @@ export const actions: Record<string, ActionHandler<Env>> = {
     }
     await logActivity(tools, { actorName: await displayName(tools, userId), kind: 'thesis', dealId: '', dealName: '', detail: '' })
     return { success: true, data: { reranked: deals.length } }
+  },
+
+  /**
+   * Switch the desk to another playbook (go-to-market targets, investment screening).
+   * The thesis and criteria are replaced by that playbook's starting ones, so
+   * targets already scored show as "not scored" until they are researched again.
+   */
+  loadPlaybook: async ({ userId, params, tools, env }) => {
+    if ((await resolveAppRole(env, userId)) !== 'admin') return fail('Only an admin can change the playbook.')
+    const playbook = Object.values(PLAYBOOKS).find((p) => p.id === params.playbook)
+    if (!playbook) return fail('Unknown playbook.')
+    const desk: Desk = { playbook: playbook.id, ...playbook.desk, suggestions: [], scoutedAt: '' }
+    must(await tools.create('desk', desk as unknown as Record<string, unknown>, DESK_ID), 'load playbook')
+    const deals = await listRows<Deal>(tools, 'deals', { limit: 200 })
+    for (const deal of deals) must(await tools.update('deals', deal.recordId, { totalScore: weightedScore(deal.data.scores ?? [], desk.criteria) }), 're-rank deal')
+    await logActivity(tools, { actorName: await displayName(tools, userId), kind: 'thesis', dealId: '', dealName: '', detail: '' })
+    return { success: true, data: { playbook: playbook.id } }
   },
 
   /** Search the web for companies matching the thesis and show them on the board. Admin only: it is a paid search. */

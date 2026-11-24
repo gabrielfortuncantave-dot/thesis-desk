@@ -7,7 +7,7 @@
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from 'deepspace'
 import { RadarChart, SERIES_STYLE, StageChip, scoreTone } from '../../components/Score'
-import { useDesk } from '../../lib/desk'
+import { useDesk, usePlaybook } from '../../lib/desk'
 import { weightedScore } from '../../desk/score'
 import type { Deal } from '../../desk/types'
 
@@ -15,6 +15,7 @@ export default function ComparePage() {
   const [params] = useSearchParams()
   const ids = (params.get('ids') ?? '').split(',').filter(Boolean).slice(0, 3)
   const desk = useDesk()
+  const words = usePlaybook()
   const deals = useQuery<Deal>('deals', { limit: 200 })
   // Keep the order the visitor ticked them in.
   const chosen = ids.map((id) => deals.records.find((d) => d.recordId === id)).filter((d) => d !== undefined)
@@ -23,7 +24,7 @@ export default function ComparePage() {
   if (chosen.length < 2) {
     return (
       <div className="mx-auto max-w-5xl px-6 py-12 text-sm text-muted-foreground">
-        <p>Tick two or three researched companies on the pipeline to compare them.</p>
+        <p>Tick two or three researched targets on the pipeline to compare them.</p>
         <Link to="/desk" className="mt-4 inline-block underline underline-offset-4">
           Back to the pipeline
         </Link>
@@ -63,7 +64,7 @@ export default function ComparePage() {
                     <Link to={`/deal/${d.recordId}`} className="font-display text-xl underline-offset-4 hover:underline">
                       {d.data.name}
                     </Link>
-                    <StageChip stage={d.data.stage} />
+                    <StageChip stage={d.data.stage} label={words.stageLabels[d.data.stage]} />
                   </p>
                   <p className="truncate text-sm text-muted-foreground">{d.data.profile?.oneLiner}</p>
                 </div>

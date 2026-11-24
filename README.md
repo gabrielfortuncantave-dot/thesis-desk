@@ -1,15 +1,38 @@
 # Thesis Desk
 
-Deal screening for a small fund or a student investment club.
+Know who to go after, and why, with the proof attached.
 
-A team writes its investment thesis once. Each company added to the desk is
-researched by an AI analyst, scored against that thesis with a quoted sentence
-behind every score, ranked on a board everyone sees live, and put to a blind
-committee vote.
+A team writes its thesis once: who it wants, and the weighted criteria that
+make a target worth a call. The desk then finds matching organisations on the
+web, has an AI analyst research and score each one with a quoted sentence
+behind every score, argues both sides, drafts a first message, ranks everything
+on a board the whole team sees live, and runs a blind vote.
 
 Live app: https://thesis-desk.app.space
 
+**The live desk runs a real example:** finding the first partners for a
+developer platform where AI agents ship full-stack apps. That platform is
+DeepSpace, which this app is built and hosted on. It is my reading of their
+go-to-market, taken from their public docs; the targets are real builder
+communities, scored from their own public pages. Not affiliated with
+DeepSpace or with any organisation listed.
+
 Built on [DeepSpace](https://deep.space) for the DeepSpace build exercise.
+
+## Playbooks
+
+The engine is the same for any "which organisations should we pick" decision.
+A playbook sets the wording, the stage names, the starting criteria and what
+the analyst is asked for. Two ship with the app, and the owner switches
+between them on the Owner page:
+
+| Playbook | Decision | Extra |
+| --- | --- | --- |
+| Go-to-market targets (default) | Pursue / Skip | A draft first message, shown only if the fact it mentions was verified and the target scores 60 or more |
+| Investment screening | Invest / Pass | A screening memo with questions for management |
+
+A playbook is one entry in `PLAYBOOKS` (`src/desk/types.ts`). The first
+version of this app was the investment playbook only (git tag `pe-desk-v3`).
 
 ## What you can do
 
@@ -21,10 +44,11 @@ Built on [DeepSpace](https://deep.space) for the DeepSpace build exercise.
 6. Open the scorecard: profile, radar chart, a rationale and quoted evidence per criterion, a screening memo with risks and questions for management, recent news. Download the memo as a PDF.
 7. Vote: Invest or Pass, conviction 1 to 5, one sentence of reasoning. Ballots stay hidden until the member who brought the company closes the vote. Then every ballot appears for everyone at the same moment.
 8. Watch the desk work: an activity feed (who added, moved, voted, revealed) and a line showing which members have the desk open right now.
-9. Let the desk find its own targets: under the pipeline, **Scouted for this thesis** lists companies a web search matched to the thesis. One click researches one.
-10. Read **the case for, the case against** before voting: the analyst argues both sides, and an argument is shown only if its quote was verified.
+9. Let the desk find its own targets: under the pipeline, **Scouted for this thesis** lists organisations a web search matched to the thesis. One click researches one.
+10. Read both sides before voting ("why they would say yes, why they would say no"), and copy the **draft first message**: three sentences built on a verified fact, for a person to edit and send. The app never sends anything.
+11.  the analyst argues both sides, and an argument is shown only if its quote was verified.
 11. Be there for the reveal: when a vote closes, the result is announced on the screen of every member who has the company open.
-12. Every Monday the desk looks for new headlines on companies in Screening or Committee, flags them on the board, emails each member a digest of the companies they added, and scouts for new companies.
+13. Every Monday the desk looks for new headlines on companies in Screening or Committee, flags them on the board, emails each member a digest of the companies they added, and scouts for new companies.
 
 ## The rule that makes it trustworthy: no quote, no score
 
@@ -106,7 +130,7 @@ scorecard already answers the questions a chat would be asked).
 Researching one company costs about $0.05 in credits on the free tier. Measured.
 
 - Research needs sign-in, and jobs can only be queued by the server (`authorizeWrite` in `worker.ts` is admin-only).
-- 3 research runs per member per 24 hours, 12 for the whole desk (`src/desk/start.ts`).
+- 5 research runs per member per 24 hours, 15 for the whole desk (`src/desk/start.ts`).
 - One row per company: adding a company that is already on the desk opens the existing scorecard.
 - PDF export is capped at 5 per company.
 - The scout is one search, run on Mondays or by an admin. Visitors only read its saved result.
@@ -137,6 +161,8 @@ multi-tenancy, which this version does not have.
 - A company's own website is marketing. "Market position" scored from it should be read as "what the company claims".
 - News is kept only when the article names the company as whole words (the first weekly digest listed ShopBack and Backcountry for "Back Market" before this filter existed). A company with a very common name can still collect unrelated articles, and a relevant article can still be low value (a shopping deal page).
 - Verification proves a sentence exists in the source. It does not prove the sentence supports the score.
+- The draft first message is a starting point. It can be bland, and it only knows what the public pages say. It is never sent by the app, on purpose: outreach should come from a person.
+- The example thesis is an outsider's reading of DeepSpace's go-to-market. The weights are opinions; that is why they are sliders.
 - Scouted companies are search results, not recommendations: the one-line reason comes from a company directory and is not verified until the company is researched.
 - The bull and bear cases come from the same model call as the scores. They are as good as the sources, and a side with no verifiable argument is shown as empty rather than padded.
 - One desk, one thesis. No private workspaces, no invitations, no comments.
@@ -160,7 +186,7 @@ npx deepspace dev start        # http://localhost:5173
 ## Tests
 
 ```bash
-npm run test:unit              # 37 unit tests: scoring, verdict, quote verification, bull and bear case, scout, HTML reading, email, LaTeX
+npm run test:unit              # 42 unit tests: scoring, verdict, quote verification, both-sides arguments, draft message, playbooks, scout, HTML reading, email, LaTeX
 npx deepspace test run all     # + 16 browser tests
 ```
 
@@ -176,7 +202,7 @@ did not add.
 ## File map
 
 ```
-src/desk/types.ts        shared types: thesis, deal, scorecard, vote
+src/desk/types.ts        shared types and the two playbooks
 src/desk/providers.ts    the integrations behind one interface + quote verification
 src/desk/sample.ts       the same interface with saved material (sample + tests)
 src/desk/research.ts     the research steps and the weekly news watch

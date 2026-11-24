@@ -4,7 +4,7 @@
  */
 
 import { weightedScore } from './score'
-import type { Deal, Desk } from './types'
+import { playbookOf, type Deal, type Desk } from './types'
 
 /** Make arbitrary text safe to place in a LaTeX document. */
 export function escapeLatex(input: string): string {
@@ -26,6 +26,7 @@ const items = (list: string[]) => (list.length ? `\\begin{itemize}\\setlength\\i
 
 export function memoLatex(deal: Deal, desk: Desk, date: string): string {
   const total = weightedScore(deal.scores ?? [], desk.criteria)
+  const words = playbookOf(desk)
   const rows = desk.criteria
     .map((c) => {
       const s = (deal.scores ?? []).find((x) => x.key === c.key)
@@ -49,7 +50,7 @@ export function memoLatex(deal: Deal, desk: Desk, date: string): string {
 \\begin{document}
 {\\LARGE\\bfseries ${escapeLatex(deal.name)}} \\hfill {\\LARGE ${total === null ? 'not scored' : `${total}/100`}}
 
-${escapeLatex(facts)} \\hfill Screening memo, ${escapeLatex(date)}
+${escapeLatex(facts)} \\hfill ${escapeLatex(words.briefTitle)}, ${escapeLatex(date)}
 
 \\textbf{Thesis:} ${escapeLatex(desk.thesisName)}
 
@@ -66,20 +67,21 @@ ${escapeLatex(deal.memo?.fit ?? '')}
 ${rows}
 \\end{tabularx}
 
-\\section*{The case for}
+\\section*{${escapeLatex(words.forTitle)}}
 ${items((deal.bull ?? []).map((p) => p.point))}
 
-\\section*{The case against}
+\\section*{${escapeLatex(words.againstTitle)}}
 ${items((deal.bear ?? []).map((p) => p.point))}
 
-\\section*{Risks}
+\\section*{${escapeLatex(words.risksTitle)}}
 ${items(deal.memo?.risks ?? [])}
 
-\\section*{Questions for management}
+\\section*{${escapeLatex(words.questionsTitle)}}
 ${items(deal.memo?.questions ?? [])}
 
+${deal.memo?.opener ? `\\section*{Draft first message}\n${escapeLatex(deal.memo.opener.text)}\n` : ''}
 \\vfill
-{\\footnotesize Generated from public sources by an AI analyst. Every quoted sentence was checked word for word against the page it cites. Scores are a screening aid, not investment advice. Source: ${escapeLatex(deal.websiteUrl)}}
+{\\footnotesize Generated from public sources by an AI analyst. Every quoted sentence was checked word for word against the page it cites. Scores are a screening aid, not advice. Source: ${escapeLatex(deal.websiteUrl)}}
 \\end{document}
 `
 }

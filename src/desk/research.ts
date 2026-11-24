@@ -24,6 +24,7 @@ import { loadDesk } from './start'
 import type { Deal, NewsItem } from './types'
 
 const YEAR_MS = 365 * 24 * 60 * 60 * 1000
+const MIN_SCORE_FOR_OPENER = 60
 
 async function load(env: Env, dealId: string): Promise<{ tools: ActionTools; deal: Row<Deal>; providers: Providers }> {
   // Tools run with RBAC off; the user id only decides who a write is attributed to.
@@ -75,6 +76,9 @@ export async function researchDeal(env: Env, dealId: string): Promise<{ totalSco
     for (const line of rejectedQuotes(analysis.value, sources)) console.info(`[research] ${deal.data.name}: quote not found: ${line}`)
 
     const totalScore = weightedScore(scores, desk.criteria)
+    const memo = toMemo(analysis.value, sources)
+    // No draft message for a target the desk itself would not pursue.
+    if (totalScore === null || totalScore < MIN_SCORE_FOR_OPENER) memo.opener = null
     const now = new Date().toISOString()
     must(
       await tools.update('deals', dealId, {
@@ -82,7 +86,7 @@ export async function researchDeal(env: Env, dealId: string): Promise<{ totalSco
         step: 'Scorecard ready',
         log,
         profile: toProfile(analysis.value),
-        memo: toMemo(analysis.value),
+        memo,
         bull: checkCase(analysis.value.bull, sources),
         bear: checkCase(analysis.value.bear, sources),
         scores,

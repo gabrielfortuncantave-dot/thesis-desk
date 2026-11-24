@@ -14,27 +14,28 @@ import { Button, Label, Textarea, useToast } from '@/components/ui'
 import { RadarChart, StageChip, TotalScore, scoreTone } from '../../../components/Score'
 import { SignInPrompt } from '../../../components/SignInPrompt'
 import { callAction } from '../../../lib/actions'
-import { useDesk } from '../../../lib/desk'
+import { useDesk, usePlaybook } from '../../../lib/desk'
 import { coverage, tally, verdict, weightedScore } from '../../../desk/score'
-import { STAGES, type CasePoint, type Deal, type Vote } from '../../../desk/types'
+import { STAGES, type CasePoint, type Deal, type Playbook, type Vote } from '../../../desk/types'
 import { safeHref } from '../../../desk/validate'
 
 export default function DealPage() {
   const { id = '' } = useParams()
   const { user } = useUser()
   const desk = useDesk()
+  const words = usePlaybook()
   const toast = useToast()
   const navigate = useNavigate()
   const deals = useQuery<Deal>('deals', { where: { recordId: id } })
   const votes = useQuery<Vote>('votes', { where: { dealId: id } })
   const [working, setWorking] = useState('')
 
-  if (deals.status === 'loading') return <Shell>Loading the company…</Shell>
+  if (deals.status === 'loading') return <Shell>Loading…</Shell>
   const deal = deals.records[0]?.data
   if (!deal) {
     return (
       <Shell>
-        <p>This company is not on the desk (it may have been removed).</p>
+        <p>This target is not on the desk (it may have been removed).</p>
         <Link to="/desk" className="mt-4 inline-block underline underline-offset-4">
           Back to the pipeline
         </Link>
@@ -79,11 +80,11 @@ export default function DealPage() {
           <div>
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="font-display text-4xl">{deal.name}</h1>
-              <StageChip stage={deal.stage} />
+              <StageChip stage={deal.stage} label={words.stageLabels[deal.stage]} />
             </div>
             <p className="mt-2 text-sm text-muted-foreground">
               {deal.isSample ? (
-                'Sample company. It is fictional and its research is saved material: no paid call was made.'
+                'Sample target. It is fictional and its research is saved material: no paid call was made.'
               ) : (
                 <a href={safeHref(deal.websiteUrl) ?? '#'} target="_blank" rel="noreferrer" className="underline underline-offset-4">
                   {deal.websiteUrl}
@@ -128,7 +129,7 @@ export default function DealPage() {
                 >
                   {STAGES.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.label}
+                      {words.stageLabels[s.id]}
                     </option>
                   ))}
                 </select>
@@ -262,7 +263,7 @@ export default function DealPage() {
               <section className="mt-12" aria-labelledby="memo-title">
                 <div className="flex flex-wrap items-end justify-between gap-3">
                   <h2 id="memo-title" className="font-display text-2xl">
-                    Screening memo
+                    {words.briefTitle}
                   </h2>
                   {user && (
                     <Button variant="secondary" disabled={working !== ''} onClick={() => void downloadMemo()} data-testid="pdf-button">
@@ -280,7 +281,7 @@ export default function DealPage() {
                   </div>
                   <div className="space-y-5 text-sm">
                     <div>
-                      <h3 className="font-medium">Risks</h3>
+                      <h3 className="font-medium">{words.risksTitle}</h3>
                       <ul className="mt-2 list-disc space-y-1 pl-5">
                         {deal.memo.risks.map((r) => (
                           <li key={r}>{r}</li>
@@ -288,7 +289,7 @@ export default function DealPage() {
                       </ul>
                     </div>
                     <div>
-                      <h3 className="font-medium">Questions for management</h3>
+                      <h3 className="font-medium">{words.questionsTitle}</h3>
                       <ul className="mt-2 list-disc space-y-1 pl-5">
                         {deal.memo.questions.map((q) => (
                           <li key={q}>{q}</li>
@@ -297,6 +298,23 @@ export default function DealPage() {
                     </div>
                   </div>
                 </div>
+                {deal.memo.opener && (
+                  <div className="mt-8 rounded-md border border-primary bg-card p-5" data-testid="opener">
+                    <h3 className="font-display text-xl">Draft first message</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">A starting point for a person to edit and send. This app never sends anything to a target.</p>
+                    <p className="mt-4 whitespace-pre-wrap">{deal.memo.opener.text}</p>
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      <span className="font-medium text-positive">✓ The fact it mentions was found in the source</span>: “{deal.memo.opener.quote}”
+                    </p>
+                    <Button
+                      variant="secondary"
+                      className="mt-4"
+                      onClick={() => void navigator.clipboard.writeText(deal.memo!.opener!.text).then(() => toast.success('Copied', 'Edit it before you send it.'))}
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                )}
               </section>
             )}
 
@@ -335,13 +353,13 @@ export default function DealPage() {
                   The analyst argues both sides before anyone votes. An argument is shown only if its quote was found in the source.
                 </p>
                 <div className="mt-5 grid gap-6 md:grid-cols-2">
-                  <CaseColumn title="Why invest" tone="text-positive" border="border-positive" points={deal.bull ?? []} sample={Boolean(deal.isSample)} testId="bull" />
-                  <CaseColumn title="Why pass" tone="text-negative" border="border-negative" points={deal.bear ?? []} sample={Boolean(deal.isSample)} testId="bear" />
+                  <CaseColumn title={words.forTitle} tone="text-positive" border="border-positive" points={deal.bull ?? []} sample={Boolean(deal.isSample)} testId="bull" />
+                  <CaseColumn title={words.againstTitle} tone="text-negative" border="border-negative" points={deal.bear ?? []} sample={Boolean(deal.isSample)} testId="bear" />
                 </div>
               </section>
             )}
 
-            <Committee deal={deal} votes={votes.records.map((v) => v.data)} userId={user?.id} canManage={canManage} run={run} working={working} />
+            <Committee deal={deal} votes={votes.records.map((v) => v.data)} userId={user?.id} canManage={canManage} run={run} working={working} words={words} />
           </>
         )}
       </div>
@@ -361,7 +379,9 @@ function Committee({
   canManage,
   run,
   working,
+  words,
 }: {
+  words: Playbook
   deal: Deal
   votes: Vote[]
   userId: string | undefined
@@ -372,6 +392,9 @@ function Committee({
   const mine = votes.find((v) => v.voterId === userId)
   const revealed = deal.voting === 'revealed'
   const result = tally(votes)
+  const decision = verdict(result)
+  // The stored decision is 'Invest' / 'Pass' / 'Split'; the playbook says what the team calls it.
+  const decisionLabel = decision === 'Invest' ? words.yes : decision === 'Pass' ? words.no : 'Split'
 
   // The reveal is a shared moment: anyone who has this page open when the vote
   // closes sees the result announced, without touching anything. Opening an
@@ -410,12 +433,12 @@ function Committee({
           onClick={() => setAnnounce(false)}
         >
           <div className="w-full max-w-lg rounded-md border border-border bg-card p-10 text-center shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">The committee has spoken on {deal.name}</p>
-            <p id="announce-title" className={`font-display mt-4 text-6xl ${verdict(result) === 'Invest' ? 'text-positive' : verdict(result) === 'Pass' ? 'text-negative' : 'text-caution'}`}>
-              {verdict(result)}
+            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">The team has decided on {deal.name}</p>
+            <p id="announce-title" className={`font-display mt-4 text-6xl ${decision === 'Invest' ? 'text-positive' : decision === 'Pass' ? 'text-negative' : 'text-caution'}`}>
+              {decisionLabel}
             </p>
             <p className="mt-4 text-lg">
-              Invest {result.invest} · Pass {result.pass}
+              {words.yes} {result.invest} · {words.no} {result.pass}
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
               Conviction {result.investConviction} for, {result.passConviction} against
@@ -427,7 +450,7 @@ function Committee({
         </div>
       )}
       <h2 id="committee-title" className="font-display text-2xl">
-        Committee vote
+        {words.voteTitle}
       </h2>
       <p className="mt-1 text-sm text-muted-foreground">
         {revealed
@@ -440,12 +463,16 @@ function Committee({
           {revealed ? (
             <div data-testid="vote-result">
               <p className="font-display text-3xl">
-                <span className="text-positive">Invest {result.invest}</span>
+                <span className="text-positive">
+                  {words.yes} {result.invest}
+                </span>
                 <span className="mx-3 text-muted-foreground">·</span>
-                <span className="text-negative">Pass {result.pass}</span>
+                <span className="text-negative">
+                  {words.no} {result.pass}
+                </span>
               </p>
               <p className="mt-2 text-sm text-muted-foreground">
-                Conviction: {result.investConviction} for, {result.passConviction} against. Decision: <span className="font-medium text-foreground">{verdict(result)}</span>.
+                Conviction: {result.investConviction} for, {result.passConviction} against. Decision: <span className="font-medium text-foreground">{decisionLabel}</span>.
               </p>
             </div>
           ) : !userId ? (
@@ -456,10 +483,10 @@ function Committee({
                 <legend className="text-sm font-medium">Your decision</legend>
                 <div className="mt-2 flex gap-4 text-sm">
                   <label className="flex items-center gap-2">
-                    <input type="radio" name="decision" value="invest" required defaultChecked={mine?.decision === 'invest'} /> Invest
+                    <input type="radio" name="decision" value="invest" required defaultChecked={mine?.decision === 'invest'} /> {words.yes}
                   </label>
                   <label className="flex items-center gap-2">
-                    <input type="radio" name="decision" value="pass" required defaultChecked={mine?.decision === 'pass'} /> Pass
+                    <input type="radio" name="decision" value="pass" required defaultChecked={mine?.decision === 'pass'} /> {words.no}
                   </label>
                 </div>
               </fieldset>
@@ -482,7 +509,7 @@ function Committee({
               </Button>
               {mine && (
                 <p className="text-sm text-positive" data-testid="my-vote-locked">
-                  ✓ Your vote is locked: {mine.decision === 'invest' ? 'Invest' : 'Pass'}, conviction {mine.conviction}. Only you can see it.
+                  ✓ Your vote is locked: {mine.decision === 'invest' ? words.yes : words.no}, conviction {mine.conviction}. Only you can see it.
                 </p>
               )}
             </form>
@@ -497,7 +524,7 @@ function Committee({
                   <p className="font-medium">
                     {v.voterName}
                     <span className={`ml-2 ${v.decision === 'invest' ? 'text-positive' : 'text-negative'}`}>
-                      {v.decision === 'invest' ? 'Invest' : 'Pass'} · conviction {v.conviction}
+                      {v.decision === 'invest' ? words.yes : words.no} · conviction {v.conviction}
                     </span>
                   </p>
                   <p className="mt-1 text-muted-foreground">{v.reason}</p>
@@ -515,7 +542,7 @@ function Committee({
                   Close the vote and reveal
                 </Button>
               )}
-              {!canManage && <p className="mt-3 text-muted-foreground">The member who added this company reveals the votes.</p>}
+              {!canManage && <p className="mt-3 text-muted-foreground">The member who added this target reveals the votes.</p>}
             </div>
           )}
         </div>

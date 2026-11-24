@@ -10,23 +10,27 @@ import { seo } from '../seo'
 const STEPS = [
   {
     title: 'Write the thesis once',
-    text: 'Five criteria with weights. Every company is read against the same grid, so two analysts cannot score the same company two ways.',
+    text: 'Who you want, and the criteria that make a target worth a call, each with a weight. Everyone on the team scores against the same grid.',
   },
   {
-    title: 'Add a company, get a scorecard',
-    text: 'An AI analyst reads the company website and a year of news, scores each criterion, and writes a one-page memo with risks and questions for management.',
+    title: 'The desk finds targets itself',
+    text: 'It searches the web with your thesis and lists organisations that match. One click sends one to the analyst. It looks again every Monday.',
   },
   {
     title: 'No quote, no score',
-    text: 'Every score must rest on a sentence quoted from a public page. The server checks each quote word for word against its source and removes any score it cannot verify.',
+    text: 'An AI analyst reads the target’s website and a year of news. Every score must rest on a sentence quoted from a real page, and the server checks each quote word for word.',
   },
   {
-    title: 'Compare, re-weight, decide',
-    text: 'Put two or three companies side by side on one radar. Move the weights and watch the ranking change. View the pipeline ranked or by stage, with a live feed of what the team is doing.',
+    title: 'Both sides, then a first line',
+    text: 'For each target: why they would say yes, why they would say no, the objections to expect, and a draft first message built on a verified fact. A person edits and sends it. The app never does.',
   },
   {
-    title: 'Vote blind, then reveal',
-    text: 'Committee members lock Invest or Pass with a reason. Nobody sees another ballot until the reveal, so the first opinion does not steer the room.',
+    title: 'Rank, map, compare',
+    text: 'A live ranked pipeline, a map on any two criteria, a side-by-side view. Move the weights and the order changes at once.',
+  },
+  {
+    title: 'Decide blind, together',
+    text: 'Each teammate locks Pursue or Skip with a reason. Nobody sees another ballot until the reveal, which lands on every open screen at the same moment.',
   },
 ]
 
@@ -43,12 +47,12 @@ export default function Landing() {
         </header>
 
         <main className="mx-auto max-w-5xl px-6 pb-24">
-          <section className="max-w-3xl pt-14 pb-16">
-            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Deal screening for small funds and student investment clubs</p>
-            <h1 className="font-display mt-4 text-5xl leading-[1.05] sm:text-6xl">Screen a company against your thesis in a minute, with the evidence attached.</h1>
+          <section className="max-w-3xl pt-14 pb-14">
+            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">For go-to-market, partnership and investment teams</p>
+            <h1 className="font-display mt-4 text-5xl leading-[1.05] sm:text-6xl">Know who to go after, and why, with the proof attached.</h1>
             <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
-              Thesis Desk scores each company on your own criteria, shows the sentence behind every score, ranks the
-              pipeline live for the whole team, and runs the committee vote blind.
+              Thesis Desk finds organisations that match your thesis, scores each one on your criteria with quoted
+              evidence, drafts the first line of outreach, and lets the team decide blind.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-4">
               <Link
@@ -57,32 +61,45 @@ export default function Landing() {
               >
                 Open the live desk
               </Link>
-              <span className="text-sm text-muted-foreground">The pipeline is public to read. Sign in to add a company or vote.</span>
+              <span className="text-sm text-muted-foreground">Public to read. Sign in to add a target or vote.</span>
             </div>
+          </section>
+
+          <section aria-labelledby="live-title" className="mb-16 rounded-md border border-primary bg-card p-6">
+            <h2 id="live-title" className="font-display text-xl">
+              The live desk runs a real example
+            </h2>
+            <p className="mt-2 max-w-3xl text-muted-foreground">
+              Its thesis: the first partners for a developer platform where AI agents ship full-stack apps. That is
+              DeepSpace, the platform this app is built and hosted on. The targets on the desk are real builder
+              communities and tools, found by the scout and scored from their own public pages.
+            </p>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Built as a job application exercise. Not affiliated with DeepSpace or with any organisation listed.
+            </p>
           </section>
 
           <section aria-labelledby="example-title" className="mb-16 rounded-md border border-border bg-card p-6">
             <h2 id="example-title" className="text-sm font-medium text-muted-foreground">
-              What a scorecard line looks like (fictional company)
+              What a scorecard line looks like (fictional target)
             </h2>
             <div className="mt-5 grid gap-6 sm:grid-cols-2">
               <div>
-                <p className="font-medium">Recurring revenue</p>
+                <p className="font-medium">Feels the shipping gap</p>
                 <p className="font-display mt-1 text-2xl text-positive">
-                  9<span className="text-sm text-muted-foreground">/10</span>
+                  7<span className="text-sm text-muted-foreground">/10</span>
                 </p>
-                <p className="mt-2 text-sm">Revenue comes from a monthly subscription.</p>
+                <p className="mt-2 text-sm">Deployment is named as the hardest part of the weekend.</p>
                 <blockquote className="mt-3 border-l-2 border-primary pl-3 text-sm text-muted-foreground">
-                  “Plans start at 89 euros per month, billed monthly, with no commitment.”
+                  “getting the app deployed with a login and a database before the demo”
                   <footer className="mt-1 text-xs">
-                    <span className="font-medium text-positive">✓ Found in the source</span> · the company’s pricing page
+                    <span className="font-medium text-positive">✓ Found in the source</span> · the organiser’s home page
                   </footer>
                 </blockquote>
               </div>
               <div>
-                <p className="font-medium">Customer retention</p>
-                <p className="font-display mt-1 text-base text-muted-foreground">Not scored</p>
-                <p className="mt-2 text-sm">The analyst claimed very low churn.</p>
+                <p className="font-medium">The same criterion, second quote</p>
+                <p className="mt-2 text-sm">The analyst also claimed that half of all teams fail to deploy anything.</p>
                 <p className="mt-3 text-sm text-caution">
                   1 quote the analyst cited was not found in the source and was removed. No quote, no score.
                 </p>
@@ -101,14 +118,13 @@ export default function Landing() {
           </section>
 
           <section className="mt-16 max-w-2xl border-t border-border pt-12">
-            <h2 className="font-display text-2xl">And it keeps reading</h2>
+            <h2 className="font-display text-2xl">One engine, more than one playbook</h2>
             <p className="mt-3 text-muted-foreground">
-              Every Monday the desk looks for new headlines on the companies under review, flags them on the board and
-              emails each member what changed on the companies they brought in.
+              The desk ships with two playbooks: go-to-market targets (Pursue or Skip, with a draft opener) and
+              investment screening (Invest or Pass, with a screening memo). A playbook is one entry in the code:
+              wording, stages, criteria and what the analyst is asked for.
             </p>
-            <p className="mt-6 text-sm text-muted-foreground">
-              Scores are a screening aid built from public pages. They are not investment advice.
-            </p>
+            <p className="mt-6 text-sm text-muted-foreground">Scores are a screening aid built from public pages. They are not advice.</p>
           </section>
         </main>
 

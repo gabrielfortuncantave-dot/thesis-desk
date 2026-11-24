@@ -16,7 +16,7 @@ import { ActivityFeed, PresenceLine } from '../../components/DeskLive'
 import { MarketMap } from '../../components/MarketMap'
 import { SignInPrompt } from '../../components/SignInPrompt'
 import { callAction } from '../../lib/actions'
-import { useDesk } from '../../lib/desk'
+import { useDesk, usePlaybook } from '../../lib/desk'
 import { weightedScore } from '../../desk/score'
 import { STAGES, type Deal, type Stage } from '../../desk/types'
 
@@ -25,6 +25,7 @@ type Weights = Record<string, number>
 export default function DeskPage() {
   const { user } = useUser()
   const desk = useDesk()
+  const words = usePlaybook()
   const navigate = useNavigate()
   const toast = useToast()
   const deals = useQuery<Deal>('deals', { orderBy: 'createdAt', orderDir: 'desc', limit: 200 })
@@ -77,7 +78,7 @@ export default function DeskPage() {
     <div className="min-h-full text-foreground">
       <div className="mx-auto max-w-6xl px-6 py-10">
         <header className="max-w-3xl">
-          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Investment thesis</p>
+          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">{words.thesisLabel}</p>
           <h1 className="font-display mt-2 text-4xl">{desk.thesisName}</h1>
           <p className="mt-3 text-muted-foreground">{desk.thesisText}</p>
           {user && <PresenceLine />}
@@ -112,7 +113,7 @@ export default function DeskPage() {
                 </div>
               </div>
               <div className={`flex flex-wrap gap-1 ${view === 'ranked' ? '' : 'hidden'}`} role="tablist" aria-label="Filter by stage">
-                {[{ id: 'all', label: 'All' } as const, ...STAGES].map((s) => (
+                {[{ id: 'all', label: 'All' } as const, ...STAGES.map((st) => ({ id: st.id, label: words.stageLabels[st.id] }))].map((s) => (
                   <button
                     key={s.id}
                     role="tab"
@@ -139,7 +140,7 @@ export default function DeskPage() {
               </p>
             ) : ranked.length === 0 ? (
               <p className="mt-6 text-sm text-muted-foreground">
-                {stage === 'all' ? 'No company yet. Add the first one on the right.' : 'No company at this stage.'}
+                {stage === 'all' ? 'Nothing here yet. Add the first target on the right.' : 'Nothing at this stage.'}
               </p>
             ) : view === 'map' ? (
               <div className="mt-4">
@@ -158,9 +159,9 @@ export default function DeskPage() {
                     .map((d) => ({ deal: d, score: weightedScore(d.data.scores ?? [], criteria) }))
                     .sort((a, b) => (b.score ?? -1) - (a.score ?? -1))
                   return (
-                    <section key={column.id} aria-label={column.label} data-testid="stage-column" data-stage={column.id} className="rounded-md bg-muted/60 p-3">
+                    <section key={column.id} aria-label={words.stageLabels[column.id]} data-testid="stage-column" data-stage={column.id} className="rounded-md bg-muted/60 p-3">
                       <h3 className="flex items-baseline justify-between text-sm font-medium">
-                        {column.label}
+                        {words.stageLabels[column.id]}
                         <span className="tabular-nums text-muted-foreground">{inStage.length}</span>
                       </h3>
                       <ul className="mt-3 space-y-2">
@@ -206,7 +207,7 @@ export default function DeskPage() {
                             <Link to={`/deal/${deal.recordId}`} className="font-display text-xl underline-offset-4 hover:underline">
                               {d.name}
                             </Link>
-                            <StageChip stage={d.stage} />
+                            <StageChip stage={d.stage} label={words.stageLabels[d.stage]} />
                           </div>
                           <p className="mt-1 text-sm text-muted-foreground">
                             {running ? (
@@ -275,8 +276,8 @@ export default function DeskPage() {
                   Scouted for this thesis
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  The desk searched the web for companies that match the thesis{desk.scoutedAt ? ` on ${new Date(desk.scoutedAt).toLocaleDateString()}` : ''}. They are not researched yet: one click
-                  puts a company through the analyst.
+                  The desk searched the web for organisations that match the thesis{desk.scoutedAt ? ` on ${new Date(desk.scoutedAt).toLocaleDateString()}` : ''}. They are not researched yet: one click
+                  puts one through the analyst.
                 </p>
                 <ul className="mt-4 grid gap-3 sm:grid-cols-2">
                   {(desk.suggestions ?? [])
@@ -302,7 +303,7 @@ export default function DeskPage() {
             )}
             <p className="mt-6 text-xs text-muted-foreground">
               Scores come from an AI analyst reading public pages. A criterion is scored only when a quoted sentence was
-              found word for word in the page it cites. This is a screening aid, not investment advice.
+              found word for word in the page it cites. This is a screening aid, not advice.
             </p>
           </section>
 
@@ -352,17 +353,17 @@ export default function DeskPage() {
 
             <section aria-labelledby="add-title" className="rounded-md border border-border bg-card p-5">
               <h2 id="add-title" className="font-display text-lg">
-                Add a company
+                Add a target
               </h2>
               {user ? (
                 <form onSubmit={onSubmit} className="mt-3 space-y-3" data-testid="add-form">
                   <div>
-                    <Label htmlFor="name">Company name</Label>
-                    <Input id="name" name="name" required maxLength={80} placeholder="Zenchef" className="mt-1.5" />
+                    <Label htmlFor="name">Name</Label>
+                    <Input id="name" name="name" required maxLength={80} placeholder={words.example.name} className="mt-1.5" />
                   </div>
                   <div>
                     <Label htmlFor="websiteUrl">Website</Label>
-                    <Input id="websiteUrl" name="websiteUrl" required maxLength={200} placeholder="https://www.zenchef.com" className="mt-1.5" />
+                    <Input id="websiteUrl" name="websiteUrl" required maxLength={200} placeholder={words.example.websiteUrl} className="mt-1.5" />
                   </div>
                   {formError && (
                     <p role="alert" data-testid="form-error" className="text-sm text-negative">
@@ -374,17 +375,17 @@ export default function DeskPage() {
                       {busy ? 'Starting…' : 'Research it'}
                     </Button>
                     <Button type="button" variant="secondary" disabled={busy} onClick={() => void add({ sample: true })} data-testid="sample-button">
-                      Add the sample company
+                      Add the sample
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Research reads the website and a year of news, then scores the company. It takes under a minute and
-                    each member gets 3 runs per day. The sample company is fictional and free.
+                    Research reads the website and a year of news, then scores the target. It takes under a minute and
+                    each member gets 5 runs per day. The sample target is fictional and free.
                   </p>
                 </form>
               ) : (
                 <div className="mt-3">
-                  <SignInPrompt what="add a company, move it along the pipeline and vote" />
+                  <SignInPrompt what="add a target, move it along the pipeline and vote" />
                 </div>
               )}
             </section>
