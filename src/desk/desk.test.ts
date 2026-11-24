@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { digestEmailText } from './email'
 import { escapeLatex, memoLatex } from './pdf'
-import { checkScores, mentionsCompany, normalise, parseJson, pickUsefulLinks, toNewsItems, verifyQuote, type RawAnalysis, type Source } from './providers'
+import { checkScores, extractLinks, htmlToText, mentionsCompany, normalise, parseJson, pickUsefulLinks, toNewsItems, verifyQuote, type RawAnalysis, type Source } from './providers'
 import { coverage, tally, weightedScore } from './score'
 import { DEFAULT_DESK, type CriterionScore, type Deal } from './types'
-import { cleanWebsiteUrl } from './validate'
+import { cleanWebsiteUrl, safeHref } from './validate'
+import { timeAgo } from '../components/DeskLive'
 
 const criteria = DEFAULT_DESK.criteria
 const scoreOf = (key: string, score: number | null): CriterionScore => ({ key, score, rationale: '', evidence: [] })
@@ -55,6 +56,14 @@ describe('quote verification', () => {
     expect(verifyQuote('4,200 restaurants', source)).toBe(false)
     expect(verifyQuote('More than 4,200 restaurants in France', undefined)).toBe(false)
   })
+  it('accepts a quote shortened with an ellipsis when each part is in the source, in order', () => {
+    expect(verifyQuote('More than 4,200 restaurants … run their service on Tablo every day', source)).toBe(true)
+    expect(verifyQuote('More than 4,200 restaurants [...] run their service on Tablo every day.', source)).toBe(true)
+  })
+  it('rejects parts glued in the wrong order, and parts too short to mean anything', () => {
+    expect(verifyQuote('run their service on Tablo every day … More than 4,200 restaurants', source)).toBe(false)
+    expect(verifyQuote('More than 4,200 restaurants in France … Tablo', source)).toBe(false)
+  })
   it('normalise keeps words and numbers', () => {
     expect(normalise('  **Hello**,  [World](x) ')).toBe('hello , world x')
   })
@@ -76,7 +85,11 @@ describe('checkScores', () => {
     expect(checked.map((s) => s.key)).toEqual(criteria.map((c) => c.key))
   })
   it('keeps a score backed by a verified quote', () => {
-    expect(checked[0]).toMatchObject({ score: 9, evidence: [{ url: 'https://a.com' }] })
+    expect(checked[0]).toMatchObject({ score: 9, evidence: [{ url: 'https://a.com' }], dropped: 0 })
+  })
+  it('records how many quotes were removed per criterion', () => {
+    expect(checked.find((s) => s.key === 'growth')?.dropped).toBe(1)
+    expect(checked.find((s) => s.key === 'risk')?.dropped).toBe(1)
   })
   it('removes a score whose quote is invented or cites a source that does not exist', () => {
     expect(checked.find((s) => s.key === 'growth')).toMatchObject({ score: null, evidence: [] })
@@ -92,6 +105,25 @@ describe('small helpers', () => {
   it('cleanWebsiteUrl accepts public sites and refuses local ones', () => {
     expect(cleanWebsiteUrl(' www.company.com/ ')).toBe('https://www.company.com')
     for (const bad of ['', 'localhost', 'http://127.0.0.1', 'javascript:alert(1)']) expect(cleanWebsiteUrl(bad)).toBeNull()
+  })
+  it('safeHref lets web links through and nothing else', () => {
+    expect(safeHref('https://example.com/a?b=1')).toBe('https://example.com/a?b=1')
+    for (const bad of ['javascript:alert(1)', 'data:text/html,x', 'not a url', '']) expect(safeHref(bad)).toBeNull()
+  })
+  it('timeAgo reads like a feed', () => {
+    const now = Date.parse('2026-11-23T12:00:00Z')
+    expect(timeAgo('2026-11-23T11:59:50Z', now)).toBe('just now')
+    expect(timeAgo('2026-11-23T11:20:00Z', now)).toBe('40 min ago')
+    expect(timeAgo('2026-11-23T07:00:00Z', now)).toBe('5 h ago')
+    expect(timeAgo('2026-11-22T10:00:00Z', now)).toBe('yesterday')
+  })
+  it('extractLinks resolves relative links and skips anchors', () => {
+    const html = '<a href="/about">About</a> <a class="x" href=\'pricing\'>Pricing</a> <a href="#top">Top</a> <a href="https://other.com/x">Other</a>'
+    expect(extractLinks(html, 'https://c.com/en/')).toEqual(['https://c.com/about', 'https://c.com/en/pricing', 'https://other.com/x'])
+  })
+  it('htmlToText drops scripts, styles and tags and decodes entities', () => {
+    const html = '<html><head><style>p{color:red}</style><script>var a = "<b>";</script></head><body><h1>Tablo &amp; Co</h1><p>4,200&nbsp;restaurants</p><!-- note --></body></html>'
+    expect(htmlToText(html)).toBe('Tablo & Co\n4,200 restaurants')
   })
   it('pickUsefulLinks keeps two same-site business pages', () => {
     const links = ['https://c.com/', 'https://c.com/blog/x', 'https://c.com/about', 'https://o.com/pricing', 'https://c.com/pricing', 'https://c.com/customers']

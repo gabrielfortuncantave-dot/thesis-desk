@@ -17,3 +17,13 @@ export function cleanWebsiteUrl(value: unknown): string | null {
     return null
   }
 }
+
+/** Only web links may be rendered as links: a source URL is third-party data. */
+export function safeHref(url: string): string | null {
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.href : null
+  } catch {
+    return null
+  }
+}

@@ -21,6 +21,10 @@ const STEPS = [
     text: 'Every score must rest on a sentence quoted from a public page. The server checks each quote word for word against its source and removes any score it cannot verify.',
   },
   {
+    title: 'Compare, re-weight, decide',
+    text: 'Put two or three companies side by side on one radar. Move the weights and watch the ranking change. View the pipeline ranked or by stage, with a live feed of what the team is doing.',
+  },
+  {
     title: 'Vote blind, then reveal',
     text: 'Committee members lock Invest or Pass with a reason. Nobody sees another ballot until the reveal, so the first opinion does not steer the room.',
   },
@@ -57,7 +61,36 @@ export default function Landing() {
             </div>
           </section>
 
-          <section className="grid gap-x-10 gap-y-10 border-t border-border pt-12 sm:grid-cols-2">
+          <section aria-labelledby="example-title" className="mb-16 rounded-md border border-border bg-card p-6">
+            <h2 id="example-title" className="text-sm font-medium text-muted-foreground">
+              What a scorecard line looks like (fictional company)
+            </h2>
+            <div className="mt-5 grid gap-6 sm:grid-cols-2">
+              <div>
+                <p className="font-medium">Recurring revenue</p>
+                <p className="font-display mt-1 text-2xl text-positive">
+                  9<span className="text-sm text-muted-foreground">/10</span>
+                </p>
+                <p className="mt-2 text-sm">Revenue comes from a monthly subscription.</p>
+                <blockquote className="mt-3 border-l-2 border-primary pl-3 text-sm text-muted-foreground">
+                  “Plans start at 89 euros per month, billed monthly, with no commitment.”
+                  <footer className="mt-1 text-xs">
+                    <span className="font-medium text-positive">✓ Found in the source</span> · the company’s pricing page
+                  </footer>
+                </blockquote>
+              </div>
+              <div>
+                <p className="font-medium">Customer retention</p>
+                <p className="font-display mt-1 text-base text-muted-foreground">Not scored</p>
+                <p className="mt-2 text-sm">The analyst claimed very low churn.</p>
+                <p className="mt-3 text-sm text-caution">
+                  1 quote the analyst cited was not found in the source and was removed. No quote, no score.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="grid gap-x-10 gap-y-10 border-t border-border pt-12 sm:grid-cols-2 lg:grid-cols-3">
             {STEPS.map((step, i) => (
               <div key={step.title}>
                 <p className="font-display text-3xl tabular-nums text-primary">{i + 1}</p>

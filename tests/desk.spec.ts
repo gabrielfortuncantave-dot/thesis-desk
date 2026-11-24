@@ -62,6 +62,9 @@ test('research runs live and only verified quotes survive', async ({ users }) =>
   await expect(analyst.page.getByTestId('evidence')).toHaveCount(5)
   await expect(analyst.page.getByTestId('verification-line')).toContainText('Verified 5 of 6 quotes')
   await expect(analyst.page.getByText('Churn is below one percent')).toHaveCount(0)
+  // The scorecard says a quote was removed, without repeating the unverified claim.
+  await expect(analyst.page.getByTestId('dropped-note')).toHaveCount(1)
+  await expect(analyst.page.getByTestId('dropped-note')).toContainText('1 quote the analyst cited was not found')
   // (9×9 + 7×7 + 7×8 + 8×8 + 5×5) ÷ 36 × 10 = 76
   await expect(analyst.page.getByTestId('score-panel').getByTestId('total-score')).toContainText('76')
 
@@ -70,6 +73,11 @@ test('research runs live and only verified quotes survive', async ({ users }) =>
   await analyst.page.getByTestId('weight-risk').fill('0')
   await expect(analyst.page.getByTestId('what-if-note')).toBeVisible()
   await expect(analyst.page.getByTestId('deal-row').filter({ hasText: 'Tablo (sample)' }).first().getByTestId('total-score')).toContainText('81')
+
+  // The public feed recorded the run, and the stage view files the company under Screening.
+  await expect(analyst.page.locator('[data-testid="activity-row"][data-kind="scored"]').first()).toContainText('76/100, with 5 of 6 quotes verified')
+  await analyst.page.getByTestId('view-stages').click()
+  await expect(analyst.page.locator('[data-testid="stage-column"][data-stage="screening"]')).toContainText('Tablo (sample)')
 })
 
 test('the committee vote is blind until the reveal, then live for everyone', async ({ users }) => {
@@ -103,7 +111,40 @@ test('the committee vote is blind until the reveal, then live for everyone', asy
   await expect(member.page.getByText('Sticky product and a clear path')).toBeVisible()
   await expect(member.page.getByTestId('vote-form')).toHaveCount(0)
 
+  // The feed told everyone a vote was locked and how the reveal ended, never who voted what before it.
+  await member.page.goto('/desk')
+  await expect(member.page.locator('[data-testid="activity-row"][data-kind="revealed"]').first()).toContainText('Invest 1, Pass 1')
+  await expect(member.page.locator('[data-testid="activity-row"][data-kind="voted"]').first()).toContainText('locked a vote on Tablo (sample)')
+
   await removeDeal(lead.page)
+})
+
+test('two companies can be compared side by side, and members see who else is at the desk', async ({ users }) => {
+  test.setTimeout(150_000)
+  const [lead, member] = await users(2)
+  const leadDeal = await sampleDeal(lead.page)
+  const memberDeal = await sampleDeal(member.page)
+
+  await lead.page.goto('/desk')
+  await member.page.goto('/desk')
+  // Presence: each member is told the other one has the desk open (first name only).
+  await expect(lead.page.getByTestId('presence-line')).toContainText('Test', { timeout: 20_000 })
+
+  const picks = lead.page.getByTestId('compare-pick')
+  await picks.nth(0).check()
+  await expect(lead.page.getByTestId('compare-bar')).toContainText('Tick one more')
+  await picks.nth(1).check()
+  await lead.page.getByTestId('compare-link').click()
+  await expect(lead.page).toHaveURL(/\/compare\?ids=/)
+  await expect(lead.page.getByTestId('compare-legend').getByRole('listitem')).toHaveCount(2)
+  // 5 criteria, the weighted total, and 6 profile lines.
+  await expect(lead.page.getByTestId('compare-table').locator('tbody tr')).toHaveCount(12)
+
+  // Each member removes their own sample so the next run starts clean.
+  await lead.page.goto(leadDeal)
+  await removeDeal(lead.page)
+  await member.page.goto(memberDeal)
+  await removeDeal(member.page)
 })
 
 test('a member cannot manage a company someone else added, and cannot change the thesis', async ({ users }) => {

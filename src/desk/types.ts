@@ -59,6 +59,8 @@ export interface CriterionScore {
   score: number | null
   rationale: string
   evidence: Evidence[]
+  /** How many quotes the analyst cited for this criterion that were NOT found in their source, and were removed. */
+  dropped?: number
 }
 
 export interface Profile {
@@ -100,6 +102,8 @@ export interface Deal {
   scores: CriterionScore[]
   /** Weighted score out of 100 with the desk's saved weights; null until researched. */
   totalScore: number | null
+  /** The total before the latest research run, to show how the picture moved. */
+  previousScore: number | null
   memo: Memo | null
   news: NewsItem[]
   isSample: number
@@ -130,4 +134,14 @@ export const SAMPLE_COMPANY = { name: 'Tablo (sample)', websiteUrl: 'https://sam
 
 export function isSampleUrl(url: string): boolean {
   return url === SAMPLE_COMPANY.websiteUrl
+}
+
+/** One line of the desk's public activity feed. Never contains how anyone voted before a reveal. */
+export interface Activity {
+  actorName: string
+  kind: 'added' | 'scored' | 'failed' | 'stage' | 'voted' | 'revealed' | 'thesis' | 'removed'
+  dealId: string
+  dealName: string
+  detail: string
+  at: string
 }

@@ -11,9 +11,10 @@
 import { resolveAppRole } from 'deepspace/worker'
 import type { ActionHandler, ActionTools } from 'deepspace/worker'
 import type { Env } from '../../worker'
+import { logActivity } from '../desk/activity'
 import { memoLatex } from '../desk/pdf'
 import { createRow, getRow, listRows, must, type Row } from '../desk/records'
-import { weightedScore } from '../desk/score'
+import { tally, weightedScore } from '../desk/score'
 import { DESK_ID, limitReached, loadDesk, queueResearch } from '../desk/start'
 import { SAMPLE_COMPANY, STAGES, isSampleUrl, type Criterion, type Deal, type Desk, type Stage, type Vote } from '../desk/types'
 import { cleanText, cleanWebsiteUrl } from '../desk/validate'
@@ -73,6 +74,7 @@ export const actions: Record<string, ActionHandler<Env>> = {
       profile: null,
       scores: [],
       totalScore: null,
+      previousScore: null,
       memo: null,
       news: [],
       isSample: sample ? 1 : 0,
@@ -87,6 +89,7 @@ export const actions: Record<string, ActionHandler<Env>> = {
     }
     const dealId = await createRow(tools, 'deals', deal as unknown as Record<string, unknown>)
     await queueResearch(env, tools, { recordId: dealId, data: deal })
+    await logActivity(tools, { actorName: who, kind: 'added', dealId, dealName: name, detail: '' })
     return { success: true, data: { dealId, alreadyOnDesk: false } }
   },
 
@@ -105,12 +108,15 @@ export const actions: Record<string, ActionHandler<Env>> = {
   },
 
   /** Move a company along the pipeline. */
-  setStage: async ({ params, tools }) => {
+  setStage: async ({ userId, params, tools }) => {
     const deal = await findDeal(tools, params.dealId)
     if (!deal) return fail('Company not found.')
-    const stage = STAGES.find((s) => s.id === params.stage)?.id as Stage | undefined
-    if (!stage) return fail('Unknown stage.')
+    const target = STAGES.find((s) => s.id === params.stage)
+    if (!target) return fail('Unknown stage.')
+    const stage: Stage = target.id
+    if (stage === deal.data.stage) return { success: true, data: { stage } }
     must(await tools.update('deals', deal.recordId, { stage }), 'set stage')
+    await logActivity(tools, { actorName: await displayName(tools, userId), kind: 'stage', dealId: deal.recordId, dealName: deal.data.name, detail: target.label })
     return { success: true, data: { stage } }
   },
 
@@ -128,16 +134,20 @@ export const actions: Record<string, ActionHandler<Env>> = {
     if (!(conviction >= 1 && conviction <= 5)) return fail('Conviction goes from 1 to 5.')
     if (reason.length < 10) return fail('Give your reason in a sentence. A vote without a reason is not counted.')
 
-    const votes = await listRows<Vote>(tools, 'votes', { where: { dealId: deal.recordId }, limit: 200 })
-    const mine = votes.find((v) => v.data.voterId === userId)
+    const who = await displayName(tools, userId)
+    const before = await listRows<Vote>(tools, 'votes', { where: { dealId: deal.recordId }, limit: 200 })
+    const mine = before.find((v) => v.data.voterId === userId)
     if (mine) {
       must(await tools.update('votes', mine.recordId, { decision, conviction, reason }), 'update vote')
     } else {
-      const vote: Vote = { dealId: deal.recordId, voterId: userId, voterName: await displayName(tools, userId), decision, conviction, reason, revealed: 'no' }
+      const vote: Vote = { dealId: deal.recordId, voterId: userId, voterName: who, decision, conviction, reason, revealed: 'no' }
       await createRow(tools, 'votes', vote as unknown as Record<string, unknown>)
     }
-    // The count is public; who voted what is not.
-    must(await tools.update('deals', deal.recordId, { voteCount: votes.length + (mine ? 0 : 1) }), 'update vote count')
+    // Count again AFTER the write: two members voting in the same second must not both write "1".
+    const after = await listRows<Vote>(tools, 'votes', { where: { dealId: deal.recordId }, limit: 200 })
+    must(await tools.update('deals', deal.recordId, { voteCount: after.length }), 'update vote count')
+    // The feed says THAT someone voted, never HOW.
+    if (!mine) await logActivity(tools, { actorName: who, kind: 'voted', dealId: deal.recordId, dealName: deal.data.name, detail: '' })
     return { success: true, data: { changed: Boolean(mine) } }
   },
 
@@ -152,6 +162,14 @@ export const actions: Record<string, ActionHandler<Env>> = {
     // Close first, so a vote cast during the reveal is refused rather than half-counted.
     must(await tools.update('deals', deal.recordId, { voting: 'revealed', stage: 'committee' }), 'close vote')
     for (const vote of votes) must(await tools.update('votes', vote.recordId, { revealed: 'yes' }), 'reveal vote')
+    const result = tally(votes.map((v) => v.data))
+    await logActivity(tools, {
+      actorName: await displayName(tools, userId),
+      kind: 'revealed',
+      dealId: deal.recordId,
+      dealName: deal.data.name,
+      detail: `Invest ${result.invest}, Pass ${result.pass}`,
+    })
     return { success: true, data: { revealed: votes.length } }
   },
 
@@ -162,6 +180,7 @@ export const actions: Record<string, ActionHandler<Env>> = {
     if (!(await mayManage(env, userId, deal))) return fail('Only the member who added this company, or an admin, can remove it.')
     must(await tools.deleteWhere('votes', { dealId: deal.recordId }, 500), 'delete votes')
     must(await tools.remove('deals', deal.recordId), 'delete deal')
+    await logActivity(tools, { actorName: await displayName(tools, userId), kind: 'removed', dealId: '', dealName: deal.data.name, detail: '' })
     return { success: true, data: { deleted: true } }
   },
 
@@ -193,6 +212,7 @@ export const actions: Record<string, ActionHandler<Env>> = {
       if (!deal.data.scores?.length) continue
       must(await tools.update('deals', deal.recordId, { totalScore: weightedScore(deal.data.scores, criteria) }), 're-rank deal')
     }
+    await logActivity(tools, { actorName: await displayName(tools, userId), kind: 'thesis', dealId: '', dealName: '', detail: '' })
     return { success: true, data: { reranked: deals.length } }
   },
 

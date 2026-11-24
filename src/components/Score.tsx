@@ -40,8 +40,25 @@ export function CriteriaBars({ scores, criteria }: { scores: CriterionScore[]; c
   )
 }
 
-/** Radar chart drawn as plain SVG: one axis per criterion, 0 at the centre, 10 at the rim. */
-export function RadarChart({ scores, criteria }: { scores: CriterionScore[]; criteria: Criterion[] }) {
+/** One company on the radar. */
+export interface RadarSeries {
+  name: string
+  scores: CriterionScore[]
+}
+
+/** Line styles differ by dash pattern as well as colour, so the chart reads without colour vision. */
+export const SERIES_STYLE = [
+  { colour: 'var(--color-primary)', dash: undefined },
+  { colour: 'var(--color-negative)', dash: '7 4' },
+  { colour: 'var(--color-caution)', dash: '2 4' },
+] as const
+
+/**
+ * Radar chart drawn as plain SVG: one axis per criterion, 0 at the centre, 10
+ * at the rim. Draws one company on a scorecard, or up to three overlaid on the
+ * compare page.
+ */
+export function RadarChart({ series, criteria }: { series: RadarSeries[]; criteria: Criterion[] }) {
   const size = 280
   const centre = size / 2
   const radius = 92
@@ -50,9 +67,10 @@ export function RadarChart({ scores, criteria }: { scores: CriterionScore[]; cri
     return [centre + Math.cos(angle) * radius * (value / 10), centre + Math.sin(angle) * radius * (value / 10)] as const
   }
   const ring = (value: number) => criteria.map((_, i) => point(i, value).join(',')).join(' ')
-  const values = criteria.map((c) => scores.find((s) => s.key === c.key)?.score)
-  const shape = values.map((v, i) => point(i, typeof v === 'number' ? v : 0).join(',')).join(' ')
-  const summary = criteria.map((c, i) => `${c.label} ${typeof values[i] === 'number' ? `${values[i]} out of 10` : 'not scored'}`).join(', ')
+  const valuesOf = (scores: CriterionScore[]) => criteria.map((c) => scores.find((s) => s.key === c.key)?.score)
+  const summary = series
+    .map((one) => `${one.name}: ${criteria.map((c, i) => `${c.label} ${typeof valuesOf(one.scores)[i] === 'number' ? `${valuesOf(one.scores)[i]} out of 10` : 'not scored'}`).join(', ')}`)
+    .join('. ')
 
   return (
     // The viewBox is wider than the chart so the side labels are never clipped.
@@ -80,11 +98,20 @@ export function RadarChart({ scores, criteria }: { scores: CriterionScore[]; cri
           </g>
         )
       })}
-      <polygon points={shape} fill="var(--color-primary)" fillOpacity="0.18" stroke="var(--color-primary)" strokeWidth="2" />
-      {values.map((v, i) => {
-        const [x, y] = point(i, typeof v === 'number' ? v : 0)
-        // A hollow dot at the centre marks a criterion that could not be scored.
-        return <circle key={criteria[i].key} cx={x} cy={y} r="3.5" fill={typeof v === 'number' ? 'var(--color-primary)' : 'var(--color-card)'} stroke="var(--color-primary)" strokeWidth="1.5" />
+      {series.map((one, n) => {
+        const style = SERIES_STYLE[n % SERIES_STYLE.length]
+        const values = valuesOf(one.scores)
+        const shape = values.map((v, i) => point(i, typeof v === 'number' ? v : 0).join(',')).join(' ')
+        return (
+          <g key={one.name + n}>
+            <polygon points={shape} fill={style.colour} fillOpacity={series.length === 1 ? 0.18 : 0.07} stroke={style.colour} strokeWidth="2" strokeDasharray={style.dash} />
+            {values.map((v, i) => {
+              const [x, y] = point(i, typeof v === 'number' ? v : 0)
+              // A hollow dot at the centre marks a criterion that could not be scored.
+              return <circle key={criteria[i].key} cx={x} cy={y} r="3.5" fill={typeof v === 'number' ? style.colour : 'var(--color-card)'} stroke={style.colour} strokeWidth="1.5" />
+            })}
+          </g>
+        )
       })}
     </svg>
   )

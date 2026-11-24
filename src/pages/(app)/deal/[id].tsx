@@ -17,6 +17,7 @@ import { callAction } from '../../../lib/actions'
 import { useDesk } from '../../../lib/desk'
 import { coverage, tally, weightedScore } from '../../../desk/score'
 import { STAGES, type Deal, type Vote } from '../../../desk/types'
+import { safeHref } from '../../../desk/validate'
 
 export default function DealPage() {
   const { id = '' } = useParams()
@@ -84,7 +85,7 @@ export default function DealPage() {
               {deal.isSample ? (
                 'Sample company. It is fictional and its research is saved material: no paid call was made.'
               ) : (
-                <a href={deal.websiteUrl} target="_blank" rel="noreferrer" className="underline underline-offset-4">
+                <a href={safeHref(deal.websiteUrl) ?? '#'} target="_blank" rel="noreferrer" className="underline underline-offset-4">
                   {deal.websiteUrl}
                 </a>
               )}
@@ -161,7 +162,15 @@ export default function DealPage() {
               <p className="mt-1 text-xs text-muted-foreground">
                 {scored} of {criteriaCount} criteria scored
               </p>
-              <RadarChart scores={deal.scores ?? []} criteria={desk.criteria} />
+              {typeof total === 'number' && typeof deal.previousScore === 'number' && total !== deal.previousScore && (
+                <p className="mt-1 text-xs" data-testid="score-delta">
+                  <span className={total > deal.previousScore ? 'text-positive' : 'text-negative'}>
+                    {total > deal.previousScore ? '▲' : '▼'} {Math.abs(total - deal.previousScore)} points
+                  </span>{' '}
+                  <span className="text-muted-foreground">since the previous research</span>
+                </p>
+              )}
+              <RadarChart series={[{ name: deal.name, scores: deal.scores ?? [] }]} criteria={desk.criteria} />
             </div>
           )}
         </header>
@@ -227,16 +236,21 @@ export default function DealPage() {
                             <footer className="mt-1 text-xs">
                               <span className="font-medium text-positive">✓ Found in the source</span>
                               {' · '}
-                              {e.url.startsWith('https://sample-company.example') || e.url.startsWith('https://example.com') ? (
+                              {deal.isSample || !safeHref(e.url) ? (
                                 e.title
                               ) : (
-                                <a href={e.url} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+                                <a href={safeHref(e.url)!} target="_blank" rel="noreferrer" className="underline underline-offset-2">
                                   {e.title}
                                 </a>
                               )}
                             </footer>
                           </blockquote>
                         ))}
+                        {(s?.dropped ?? 0) > 0 && (
+                          <p className="mt-3 text-xs text-caution" data-testid="dropped-note">
+                            {s!.dropped} quote{s!.dropped === 1 ? '' : 's'} the analyst cited {s!.dropped === 1 ? 'was' : 'were'} not found in the source and {s!.dropped === 1 ? 'was' : 'were'} removed.
+                          </p>
+                        )}
                       </div>
                     </li>
                   )
@@ -296,10 +310,10 @@ export default function DealPage() {
                     <li key={n.url} className="p-4">
                       <p>
                         {n.isNew && <span className="mr-2 rounded-full bg-caution/15 px-2 py-0.5 text-xs font-medium text-caution">New this week</span>}
-                        {n.url.startsWith('https://example.com') ? (
+                        {deal.isSample || !safeHref(n.url) ? (
                           <span className="font-medium">{n.title}</span>
                         ) : (
-                          <a href={n.url} target="_blank" rel="noreferrer" className="font-medium underline underline-offset-4">
+                          <a href={safeHref(n.url)!} target="_blank" rel="noreferrer" className="font-medium underline underline-offset-4">
                             {n.title}
                           </a>
                         )}

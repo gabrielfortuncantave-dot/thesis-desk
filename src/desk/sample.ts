@@ -76,7 +76,8 @@ const ANALYSIS: RawAnalysis = {
       key: 'growth',
       score: 8,
       rationale: 'A recent funding round is explicitly aimed at new countries and a larger engineering team.',
-      evidence: [{ source: 'N1', quote: 'closed a 30 million euro round to open offices in Lisbon and Athens and to double its engineering team within a year' }],
+      // A shortened quote: each part around the ellipsis must be found in the source, in order.
+      evidence: [{ source: 'N1', quote: 'closed a 30 million euro round to open offices in Lisbon and Athens … double its engineering team within a year' }],
     },
     {
       key: 'stickiness',
@@ -115,7 +116,7 @@ const ANALYSIS: RawAnalysis = {
 export const sampleProviders: Providers = {
   async readWebsite() {
     await pause(800)
-    return { value: SITE, costUsd: 0 }
+    return { value: SITE, costUsd: 0, via: 'firecrawl' as const }
   },
   async searchNews() {
     await pause(800)

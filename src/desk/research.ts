@@ -15,7 +15,8 @@
 import type { ActionTools } from 'deepspace/worker'
 import type { Env } from '../../worker'
 import { createActionTools } from '../server/action-routes'
-import { checkScores, liveProviders, toMemo, toNewsItems, toProfile, type Providers } from './providers'
+import { logActivity } from './activity'
+import { checkScores, liveProviders, rejectedQuotes, toMemo, toNewsItems, toProfile, type Providers } from './providers'
 import { getRow, must, type Row } from './records'
 import { sampleProviders } from './sample'
 import { weightedScore } from './score'
@@ -48,7 +49,9 @@ export async function researchDeal(env: Env, dealId: string): Promise<{ totalSco
     const site = await providers.readWebsite(deal.data.websiteUrl)
     costUsd += site.costUsd
 
-    await say('searching', `Read ${site.value.length} page${site.value.length === 1 ? '' : 's'}. Searching the last 12 months of news`)
+    // Say so when the main reader was down and a backup did the reading.
+    const reader = site.via === 'firecrawl' ? '' : ` with the backup reader (${site.via})`
+    await say('searching', `Read ${site.value.length} page${site.value.length === 1 ? '' : 's'}${reader}. Searching the last 12 months of news`)
     // News is useful but optional: a failed search must not sink the run.
     const since = new Date(Date.now() - YEAR_MS).toISOString()
     const news = await providers.searchNews(deal.data.name, since).catch(() => ({ value: [], costUsd: 0 }))
@@ -68,6 +71,8 @@ export async function researchDeal(env: Env, dealId: string): Promise<{ totalSco
     const claimed = analysis.value.scores?.reduce((n, s) => n + (s.evidence?.length ?? 0), 0) ?? 0
     const kept = scores.reduce((n, s) => n + s.evidence.length, 0)
     log.push(`Verified ${kept} of ${claimed} quotes against their source`)
+    // Rejected quotes are unverified claims about a real company: they go to the server log, never to a public row.
+    for (const line of rejectedQuotes(analysis.value, sources)) console.info(`[research] ${deal.data.name}: quote not found: ${line}`)
 
     const totalScore = weightedScore(scores, desk.criteria)
     const now = new Date().toISOString()
@@ -80,6 +85,7 @@ export async function researchDeal(env: Env, dealId: string): Promise<{ totalSco
         memo: toMemo(analysis.value),
         scores,
         totalScore,
+        previousScore: deal.data.totalScore ?? null,
         news: toNewsItems(news.value),
         costUsd,
         researchedAt: now,
@@ -90,11 +96,19 @@ export async function researchDeal(env: Env, dealId: string): Promise<{ totalSco
       }),
       'save scorecard',
     )
+    await logActivity(tools, {
+      actorName: 'Analyst',
+      kind: 'scored',
+      dealId,
+      dealName: deal.data.name,
+      detail: totalScore === null ? 'without a result: no quote could be verified' : `${totalScore}/100, with ${kept} of ${claimed} quotes verified`,
+    })
     return { totalScore, costUsd }
   } catch (error) {
     // Leave an honest trace on the board instead of a spinner that never ends.
     const message = error instanceof Error ? error.message : String(error)
     await tools.update('deals', dealId, { status: 'failed', step: 'Research failed', log: [...log, `Failed: ${message}`], error: message, costUsd })
+    await logActivity(tools, { actorName: 'Analyst', kind: 'failed', dealId, dealName: deal.data.name, detail: '' })
     throw error
   }
 }

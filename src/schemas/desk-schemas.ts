@@ -1,5 +1,5 @@
 /**
- * The three collections of the desk.
+ * The four collections of the desk.
  *
  * - `desk` and `deals` are readable by everyone, signed in or not: the board
  *   is a shared room. Nobody writes to them directly; every change goes
@@ -44,6 +44,7 @@ export const dealsSchema: CollectionSchema = {
     { name: 'profile', storage: 'text', interpretation: { kind: 'json' } },
     { name: 'scores', storage: 'text', interpretation: { kind: 'json' } },
     { name: 'totalScore', storage: 'number', interpretation: 'plain' },
+    { name: 'previousScore', storage: 'number', interpretation: 'plain' },
     { name: 'memo', storage: 'text', interpretation: { kind: 'json' } },
     { name: 'news', storage: 'text', interpretation: { kind: 'json' } },
     { name: 'isSample', storage: 'number', interpretation: { kind: 'boolean' } },
@@ -88,5 +89,24 @@ export const votesSchema: CollectionSchema = {
     member: BLIND_UNTIL_REVEALED,
     // The owner of the app is on the committee too: no early look for admins.
     admin: BLIND_UNTIL_REVEALED,
+  },
+}
+
+/** Public, append-only feed of what happens on the desk. Written by the server only. */
+export const activitySchema: CollectionSchema = {
+  name: 'activity',
+  columns: [
+    { name: 'actorName', storage: 'text', interpretation: 'plain' },
+    { name: 'kind', storage: 'text', interpretation: 'plain' },
+    { name: 'dealId', storage: 'text', interpretation: 'plain' },
+    { name: 'dealName', storage: 'text', interpretation: 'plain' },
+    { name: 'detail', storage: 'text', interpretation: 'plain' },
+    { name: 'at', storage: 'text', interpretation: 'plain' },
+  ],
+  permissions: {
+    '*': { read: true, ...SERVER_WRITES_ONLY },
+    viewer: { read: true, ...SERVER_WRITES_ONLY },
+    member: { read: true, ...SERVER_WRITES_ONLY },
+    admin: { read: true, ...SERVER_WRITES_ONLY },
   },
 }
