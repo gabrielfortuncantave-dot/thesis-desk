@@ -215,6 +215,8 @@ describe('small helpers', () => {
   it('parseJson accepts fenced JSON and returns null on prose', () => {
     expect(parseJson('```json\n{"a":1}\n```')).toEqual({ a: 1 })
     expect(parseJson('Here you go')).toBeNull()
+    expect(parseJson('Here is the result: {"a":1} Hope it helps.')).toEqual({ a: 1 })
+    expect(parseJson('{"a":1, "b": "cut off')).toBeNull()
   })
   it('toNewsItems reads the date carried in the title', () => {
     const [item] = toNewsItems([{ id: 'N1', url: 'https://n.com/1', title: 'Tablo raises a round (2026-06-12)', text: 'Tablo raises a round\nSummary: It raised money.' }])

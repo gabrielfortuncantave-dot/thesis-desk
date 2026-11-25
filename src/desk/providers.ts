@@ -202,16 +202,26 @@ export function liveProviders(tools: ActionTools): Providers {
     },
 
     async analyse(companyName, desk, sources) {
-      const r = await call<ChatResponse>('openai/chat-completion', {
+      const body = {
         model: ANALYST_MODEL,
         temperature: 0,
-        max_tokens: 2400,
+        // Six criteria with quotes, both sides, a brief and a draft message: 2,400 tokens cut a real answer
+        // in the middle of its JSON (Hack Club, first live run), so the ceiling is higher than it looks necessary.
+        max_tokens: 4500,
         messages: [
           { role: 'system', content: analystInstructions(desk) },
           { role: 'user', content: JSON.stringify({ company: companyName, sources: sources.map(({ id, title, text }) => ({ id, title, text })) }) },
         ],
-      })
-      return { value: parseJson(r.choices?.[0]?.message?.content ?? '') as RawAnalysis | null, costUsd: r.costUsd ?? 0 }
+      }
+      let costUsd = 0
+      // An answer that is not valid JSON is worth one more try before failing the whole research.
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const r = await call<ChatResponse>('openai/chat-completion', body)
+        costUsd += r.costUsd ?? 0
+        const parsed = parseJson(r.choices?.[0]?.message?.content ?? '') as RawAnalysis | null
+        if (parsed) return { value: parsed, costUsd }
+      }
+      return { value: null, costUsd }
     },
   }
 }
@@ -327,8 +337,11 @@ export function pickUsefulLinks(homeUrl: string, links: string[]): string[] {
 /** Models sometimes wrap JSON in a ```json fence; accept that, return null on anything else. */
 export function parseJson(text: string): unknown {
   const stripped = text.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim()
+  // Some answers put a sentence before or after the object: keep what is between the outer braces.
+  const start = stripped.indexOf('{')
+  const end = stripped.lastIndexOf('}')
   try {
-    return JSON.parse(stripped)
+    return JSON.parse(start >= 0 && end > start ? stripped.slice(start, end + 1) : stripped)
   } catch {
     return null
   }
