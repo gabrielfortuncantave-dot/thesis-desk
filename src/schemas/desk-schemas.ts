@@ -59,7 +59,6 @@ export const dealsSchema: CollectionSchema = {
     { name: 'newsCheckedAt', storage: 'text', interpretation: 'plain' },
     { name: 'voting', storage: 'text', interpretation: 'plain' },
     { name: 'voteCount', storage: 'number', interpretation: 'plain' },
-    { name: 'pdfExports', storage: 'number', interpretation: 'plain' },
     { name: 'error', storage: 'text', interpretation: 'plain' },
   ],
   ownerField: 'addedBy',

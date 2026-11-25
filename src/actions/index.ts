@@ -3,7 +3,7 @@
  *
  * Action tools run with per-record RBAC OFF (see src/server/action-routes.ts),
  * so each action below decides for itself who may do what:
- *   - any signed-in member: add a company, move a stage, vote, export a memo;
+ *   - any signed-in member: add a target, move a stage, vote;
  *   - the member who added a company, or an admin: re-run research, reveal votes, delete;
  *   - an admin only: change the thesis.
  */
@@ -12,15 +12,13 @@ import { resolveAppRole } from 'deepspace/worker'
 import type { ActionHandler, ActionTools } from 'deepspace/worker'
 import type { Env } from '../../worker'
 import { logActivity } from '../desk/activity'
-import { memoLatex } from '../desk/pdf'
 import { createRow, getRow, listRows, must, type Row } from '../desk/records'
 import { tally, weightedScore } from '../desk/score'
 import { DESK_ID, limitReached, loadDesk, queueResearch, scoutDesk } from '../desk/start'
-import { PLAYBOOKS, SAMPLE_COMPANY, STAGES, isSampleUrl, playbookOf, type Criterion, type Deal, type Desk, type Stage, type Vote } from '../desk/types'
+import { SAMPLE_COMPANY, STAGES, isSampleUrl, playbookOf, type Criterion, type Deal, type Desk, type Stage, type Vote } from '../desk/types'
 import { cleanText, cleanWebsiteUrl } from '../desk/validate'
 
 const fail = (error: string) => ({ success: false as const, error })
-const MAX_PDF_EXPORTS_PER_DEAL = 5
 
 async function findDeal(tools: ActionTools, dealId: unknown): Promise<Row<Deal> | null> {
   return typeof dealId === 'string' && dealId ? getRow<Deal>(tools, 'deals', dealId) : null
@@ -86,7 +84,6 @@ export const actions: Record<string, ActionHandler<Env>> = {
       newsCheckedAt: '',
       voting: 'open',
       voteCount: 0,
-      pdfExports: 0,
       error: '',
     }
     const dealId = await createRow(tools, 'deals', deal as unknown as Record<string, unknown>)
@@ -221,23 +218,6 @@ export const actions: Record<string, ActionHandler<Env>> = {
     return { success: true, data: { reranked: deals.length } }
   },
 
-  /**
-   * Switch the desk to another playbook (go-to-market targets, investment screening).
-   * The thesis and criteria are replaced by that playbook's starting ones, so
-   * targets already scored show as "not scored" until they are researched again.
-   */
-  loadPlaybook: async ({ userId, params, tools, env }) => {
-    if ((await resolveAppRole(env, userId)) !== 'admin') return fail('Only an admin can change the playbook.')
-    const playbook = Object.values(PLAYBOOKS).find((p) => p.id === params.playbook)
-    if (!playbook) return fail('Unknown playbook.')
-    const desk: Desk = { playbook: playbook.id, ...playbook.desk, suggestions: [], scoutedAt: '' }
-    must(await tools.create('desk', desk as unknown as Record<string, unknown>, DESK_ID), 'load playbook')
-    const deals = await listRows<Deal>(tools, 'deals', { limit: 200 })
-    for (const deal of deals) must(await tools.update('deals', deal.recordId, { totalScore: weightedScore(deal.data.scores ?? [], desk.criteria) }), 're-rank deal')
-    await logActivity(tools, { actorName: await displayName(tools, userId), kind: 'thesis', dealId: '', dealName: '', detail: '' })
-    return { success: true, data: { playbook: playbook.id } }
-  },
-
   /** Search the web for companies matching the thesis and show them on the board. Admin only: it is a paid search. */
   scoutNow: async ({ userId, tools, env }) => {
     if ((await resolveAppRole(env, userId)) !== 'admin') return fail('Only an admin can run the scout. It also runs by itself every Monday.')
@@ -246,22 +226,5 @@ export const actions: Record<string, ActionHandler<Env>> = {
     } catch (error) {
       return fail(`The scout could not search: ${error instanceof Error ? error.message : String(error)}`)
     }
-  },
-
-  /** Build the one-page memo as a PDF (LaTeX compiled by the latex-compiler integration). */
-  exportMemo: async ({ params, tools }) => {
-    const deal = await findDeal(tools, params.dealId)
-    if (!deal) return fail('Company not found.')
-    if (deal.data.status !== 'done' || !deal.data.memo) return fail('The memo is available once the scorecard is ready.')
-    const exports = deal.data.pdfExports ?? 0
-    // Each compile is a paid call, so the number per company is capped.
-    if (exports >= MAX_PDF_EXPORTS_PER_DEAL) return fail('This memo has reached its PDF limit. Re-run the research to export a fresh one.')
-    const document = memoLatex(deal.data, await loadDesk(tools), new Date().toISOString().slice(0, 10))
-    const result = await tools.integration<{ compiled?: boolean; pdfBase64?: string | null; error?: string }>('latex-compiler/compile', { compiler: 'pdflatex', document })
-    if (!result.success) return fail(`The PDF could not be built: ${result.error}`)
-    if (!result.data.compiled || !result.data.pdfBase64) return fail('The PDF could not be built from this memo.')
-    must(await tools.update('deals', deal.recordId, { pdfExports: exports + 1 }), 'count export')
-    const fileName = `${deal.data.name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'memo'}-screening-memo.pdf`
-    return { success: true, data: { pdfBase64: result.data.pdfBase64, fileName } }
   },
 }

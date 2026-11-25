@@ -22,11 +22,7 @@ const STEPS = [
   },
   {
     title: 'Both sides, then a first line',
-    text: 'For each target: why they would say yes, why they would say no, the objections to expect, and a draft first message built on a verified fact. A person edits and sends it. The app never does.',
-  },
-  {
-    title: 'Rank, map, compare',
-    text: 'A live ranked pipeline, a map on any two criteria, a side-by-side view. Move the weights and the order changes at once.',
+    text: 'Why they would say yes, why they would say no, and a draft first message built on a verified fact. A person edits and sends it. The desk never does.',
   },
   {
     title: 'Decide blind, together',
@@ -48,7 +44,7 @@ export default function Landing() {
 
         <main className="mx-auto max-w-5xl px-6 pb-24">
           <section className="max-w-3xl pt-14 pb-14">
-            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">For go-to-market, partnership and investment teams</p>
+            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">For go-to-market and partnership teams</p>
             <h1 className="font-display mt-4 text-5xl leading-[1.05] sm:text-6xl">Know who to go after, and why, with the proof attached.</h1>
             <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
               Thesis Desk finds organisations that match your thesis, scores each one on your criteria with quoted
@@ -70,12 +66,9 @@ export default function Landing() {
               The live desk runs a real example
             </h2>
             <p className="mt-2 max-w-3xl text-muted-foreground">
-              Its thesis: the first partners for a developer platform where AI agents ship full-stack apps. That is
-              DeepSpace, the platform this app is built and hosted on. The targets on the desk are real builder
-              communities and tools, found by the scout and scored from their own public pages.
-            </p>
-            <p className="mt-3 text-sm text-muted-foreground">
-              Built as a job application exercise. Not affiliated with DeepSpace or with any organisation listed.
+              Its thesis: the first partners for a developer platform where AI agents ship full-stack apps. The targets
+              on the desk are real builder communities, found by the scout and scored from their own public pages.
+              Move the weights and the ranking changes.
             </p>
           </section>
 
@@ -107,7 +100,7 @@ export default function Landing() {
             </div>
           </section>
 
-          <section className="grid gap-x-10 gap-y-10 border-t border-border pt-12 sm:grid-cols-2 lg:grid-cols-3">
+          <section className="grid gap-x-10 gap-y-10 border-t border-border pt-12 sm:grid-cols-2">
             {STEPS.map((step, i) => (
               <div key={step.title}>
                 <p className="font-display text-3xl tabular-nums text-primary">{i + 1}</p>
@@ -118,13 +111,15 @@ export default function Landing() {
           </section>
 
           <section className="mt-16 max-w-2xl border-t border-border pt-12">
-            <h2 className="font-display text-2xl">One engine, more than one playbook</h2>
+            <h2 className="font-display text-2xl">What it will not do</h2>
             <p className="mt-3 text-muted-foreground">
-              The desk ships with two playbooks: go-to-market targets (Pursue or Skip, with a draft opener) and
-              investment screening (Invest or Pass, with a screening memo). A playbook is one entry in the code:
-              wording, stages, criteria and what the analyst is asked for.
+              It does not send messages, and it does not look up anyone’s email address. It reads public pages, shows
+              its evidence, and leaves the outreach to a person.{' '}
+              <Link to="/about" className="text-foreground underline underline-offset-4">
+                How it works, and where it stops
+              </Link>
+              .
             </p>
-            <p className="mt-6 text-sm text-muted-foreground">Scores are a screening aid built from public pages. They are not advice.</p>
           </section>
         </main>
 

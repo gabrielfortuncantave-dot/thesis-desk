@@ -1,15 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import { digestEmailText } from './email'
-import { escapeLatex, memoLatex } from './pdf'
 import { analystInstructions, checkCase, checkOpener, checkScores, extractLinks, htmlToText, mentionsCompany, normalise, parseJson, pickUsefulLinks, toNewsItems, toSuggestions, verifyQuote, type RawAnalysis, type Source } from './providers'
 import { coverage, tally, verdict, weightedScore } from './score'
-import { DEFAULT_DESK, PLAYBOOKS, playbookOf, type CriterionScore, type Deal, type Desk } from './types'
+import { DEFAULT_DESK, PLAYBOOKS, playbookOf, type Criterion, type CriterionScore } from './types'
 import { cleanWebsiteUrl, safeHref } from './validate'
 import { timeAgo } from '../components/DeskLive'
 
-// The numeric examples below use the investment playbook's five criteria.
-const PE_DESK: Desk = { playbook: 'pe', ...PLAYBOOKS.pe.desk }
-const criteria = PE_DESK.criteria
+// A small fixed grid for the numeric examples, independent of the thesis the app ships with.
+const criteria: Criterion[] = [
+  { key: 'recurring', label: 'Recurring revenue', weight: 9, guide: '' },
+  { key: 'position', label: 'Market position', weight: 7, guide: '' },
+  { key: 'growth', label: 'Growth signals', weight: 7, guide: '' },
+  { key: 'stickiness', label: 'Product stickiness', weight: 8, guide: '' },
+  { key: 'risk', label: 'Low risk profile', weight: 5, guide: '' },
+]
 const scoreOf = (key: string, score: number | null): CriterionScore => ({ key, score, rationale: '', evidence: [] })
 
 describe('weightedScore', () => {
@@ -48,23 +52,21 @@ describe('coverage and tally', () => {
   })
 })
 
-describe('playbooks', () => {
+describe('playbook', () => {
   it('a fresh desk runs the go-to-market playbook', () => {
     expect(playbookOf(DEFAULT_DESK)).toMatchObject({ id: 'gtm', yes: 'Pursue', no: 'Skip', wantsOpener: true })
     expect(playbookOf(null).id).toBe('gtm')
-    expect(playbookOf(PE_DESK)).toMatchObject({ yes: 'Invest', no: 'Pass', wantsOpener: false })
   })
-  it('every playbook names all five stages and gives each criterion a unique key', () => {
+  it('names all five stages and gives each criterion a unique key', () => {
     for (const playbook of Object.values(PLAYBOOKS)) {
       expect(Object.keys(playbook.stageLabels).sort()).toEqual(['committee', 'invested', 'passed', 'screening', 'sourced'])
       const keys = playbook.desk.criteria.map((c) => c.key)
       expect(new Set(keys).size).toBe(keys.length)
     }
   })
-  it('only the go-to-market analyst is asked for a first message, and both are told sources are untrusted', () => {
+  it('asks the analyst for a first message and tells it that sources are untrusted', () => {
     expect(analystInstructions(DEFAULT_DESK)).toContain('"opener"')
-    expect(analystInstructions(PE_DESK)).not.toContain('"opener"')
-    for (const desk of [DEFAULT_DESK, PE_DESK]) expect(analystInstructions(desk)).toContain('untrusted web pages')
+    expect(analystInstructions(DEFAULT_DESK)).toContain('untrusted web pages')
   })
 })
 
@@ -241,25 +243,5 @@ describe('weekly digest email', () => {
   })
   it('sends nothing when nothing is new', () => {
     expect(digestEmailText('thesis-desk', [{ dealId: 'd2', name: 'Quiet Co', fresh: [] }])).toBeNull()
-  })
-})
-
-describe('PDF memo', () => {
-  it('escapes LaTeX special characters and drops what pdflatex cannot print', () => {
-    expect(escapeLatex('R&D at 50% for $5_000 {x} 日本')).toBe('R\\&D at 50\\% for \\$5\\_000 \\{x\\} ')
-  })
-  it('builds a complete document with the weighted score', () => {
-    const deal = {
-      name: 'Tablo & Co',
-      websiteUrl: 'https://tablo.example',
-      profile: { sector: 'Software', headquarters: 'Lyon', founded: '2017', size: '140 employees' },
-      memo: { summary: 'S', fit: 'F', risks: ['R1'], questions: ['Q1'] },
-      scores: [{ key: 'recurring', score: 8, rationale: 'Subscription', evidence: [{ quote: 'Plans start at 89 euros', url: 'u', title: 't' }] }],
-    } as unknown as Deal
-    const tex = memoLatex(deal, PE_DESK, '2026-11-23')
-    expect(tex).toContain('\\begin{document}')
-    expect(tex).toContain('Tablo \\& Co')
-    expect(tex).toContain('80/100')
-    expect(tex).toContain('\\end{document}')
   })
 })

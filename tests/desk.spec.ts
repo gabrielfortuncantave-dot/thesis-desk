@@ -50,6 +50,12 @@ test('signed-out visitors can read the board but are asked to sign in to act', a
   await expect(page.getByTestId('add-form')).toHaveCount(0)
 })
 
+test('the public page says how it works and where it stops', async ({ page }) => {
+  await page.goto('/about')
+  await expect(page.getByTestId('about-page')).toContainText('never sends anything')
+  await expect(page.getByTestId('about-page')).toContainText('What was cut')
+})
+
 test('research runs live and only verified quotes survive', async ({ users }) => {
   test.setTimeout(120_000)
   const [analyst] = await users(1)
@@ -80,13 +86,8 @@ test('research runs live and only verified quotes survive', async ({ users }) =>
   await expect(analyst.page.getByTestId('what-if-note')).toBeVisible()
   await expect(analyst.page.getByTestId('deal-row').filter({ hasText: 'Buildfest (sample)' }).first().getByTestId('total-score')).toContainText('77')
 
-  // The public feed recorded the run, and the stage view files the company under Screening.
+  // The public feed recorded the run.
   await expect(analyst.page.locator('[data-testid="activity-row"][data-kind="scored"]').first()).toContainText('79/100, with 6 of 7 quotes verified')
-  await analyst.page.getByTestId('view-stages').click()
-  await expect(analyst.page.locator('[data-testid="stage-column"][data-stage="screening"]')).toContainText('Buildfest (sample)')
-  // And the map places it as a bubble that links to its scorecard.
-  await analyst.page.getByTestId('view-map').click()
-  await expect(analyst.page.getByTestId('map-bubble').filter({ hasText: 'Buildfest (sample)' }).first()).toBeVisible()
 })
 
 test('the committee vote is blind until the reveal, then live for everyone', async ({ users }) => {
@@ -131,34 +132,6 @@ test('the committee vote is blind until the reveal, then live for everyone', asy
   await expect(member.page.locator('[data-testid="activity-row"][data-kind="voted"]').first()).toContainText('locked a vote on Buildfest (sample)')
 
   await removeDeal(lead.page)
-})
-
-test('two companies can be compared side by side, and members see who else is at the desk', async ({ users }) => {
-  test.setTimeout(150_000)
-  const [lead, member] = await users(2)
-  const leadDeal = await sampleDeal(lead.page)
-  const memberDeal = await sampleDeal(member.page)
-
-  await lead.page.goto('/desk')
-  await member.page.goto('/desk')
-  // Presence: each member is told the other one has the desk open (first name only).
-  await expect(lead.page.getByTestId('presence-line')).toContainText('Test', { timeout: 20_000 })
-
-  const picks = lead.page.getByTestId('compare-pick')
-  await picks.nth(0).check()
-  await expect(lead.page.getByTestId('compare-bar')).toContainText('Tick one more')
-  await picks.nth(1).check()
-  await lead.page.getByTestId('compare-link').click()
-  await expect(lead.page).toHaveURL(/\/compare\?ids=/)
-  await expect(lead.page.getByTestId('compare-legend').getByRole('listitem')).toHaveCount(2)
-  // 6 criteria, the weighted total, and 6 profile lines.
-  await expect(lead.page.getByTestId('compare-table').locator('tbody tr')).toHaveCount(13)
-
-  // Each member removes their own sample so the next run starts clean.
-  await lead.page.goto(leadDeal)
-  await removeDeal(lead.page)
-  await member.page.goto(memberDeal)
-  await removeDeal(member.page)
 })
 
 test('a member cannot manage a company someone else added, and cannot change the thesis', async ({ users }) => {

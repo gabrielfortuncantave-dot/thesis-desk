@@ -1,12 +1,10 @@
 /**
- * The two "someone else is here" pieces of the board: the activity feed and
- * the presence line. Both are realtime and neither needs code on the server
- * beyond the `activity` rows the actions already write.
+ * The desk's activity feed. It is a realtime subscription to the `activity`
+ * rows the server actions write, so it needs no code of its own on the server.
  */
 
 import { Link } from 'react-router-dom'
-import { usePresenceRoom, useQuery } from 'deepspace'
-import { SCOPE_ID } from '../constants'
+import { useQuery } from 'deepspace'
 import type { Activity } from '../desk/types'
 
 /** "3 min ago", "2 h ago", "yesterday"… good enough for a feed. */
@@ -88,20 +86,5 @@ function DealName({ activity }: { activity: Activity }) {
     </Link>
   ) : (
     <span>{activity.dealName}</span>
-  )
-}
-
-/** Who else has the desk open right now. Rendered for signed-in members only. */
-export function PresenceLine() {
-  const { peers } = usePresenceRoom(SCOPE_ID)
-  // First names only, and no anonymous visitors: the line is about colleagues.
-  const names = [...new Set(peers.filter((p) => !p.userId.startsWith('anon-')).map((p) => p.userName.split(/[\s@]/)[0]).filter(Boolean))]
-  if (names.length === 0) return null
-  return (
-    <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground" data-testid="presence-line">
-      <span className="h-2 w-2 rounded-full bg-positive" aria-hidden="true" />
-      Also at the desk now: {names.slice(0, 5).join(', ')}
-      {names.length > 5 && ` and ${names.length - 5} more`}
-    </p>
   )
 }

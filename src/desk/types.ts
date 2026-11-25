@@ -36,7 +36,7 @@ export interface Suggestion {
   why: string
 }
 
-export type PlaybookId = 'gtm' | 'pe'
+export type PlaybookId = 'gtm'
 
 export interface Desk {
   /** Which playbook the desk runs: it sets the vocabulary and what the analyst is asked for. */
@@ -50,9 +50,11 @@ export interface Desk {
 }
 
 /**
- * A playbook turns the same engine (research, verified scoring, blind vote)
- * into a tool for one kind of decision. Everything a team would want to word
- * differently lives here, so adding a playbook is adding one entry.
+ * A playbook holds everything a team would word differently: what the two
+ * decisions are called, the stage names, the section titles, what the analyst
+ * is asked for, and the thesis a desk starts with. The app ships with one,
+ * go-to-market targets. An earlier build also had an investment-screening
+ * playbook (git tag `full-v4`); it was cut to keep this submission to one flow.
  */
 export interface Playbook {
   id: PlaybookId
@@ -109,36 +111,6 @@ export const PLAYBOOKS: Record<PlaybookId, Playbook> = {
         { key: 'reach', label: 'Reach', weight: 6, guide: 'Numbers: members, participants, students, events per year, cities, followers.' },
         { key: 'timing', label: 'Timing signal', weight: 6, guide: 'Something dated in the last 12 months that gives a reason to reach out now: an upcoming event, a new cohort, a launch, funding.' },
         { key: 'openness', label: 'Open to partners', weight: 5, guide: 'Sponsors, partner or perks pages, a call for partners, named existing tool partners.' },
-      ],
-    },
-  },
-  pe: {
-    id: 'pe',
-    label: 'Investment screening',
-    thesisLabel: 'Investment thesis',
-    analyst: 'You are a private equity analyst screening a company against an investment thesis.',
-    yes: 'Invest',
-    no: 'Pass',
-    voteTitle: 'Committee vote',
-    forTitle: 'Why invest',
-    againstTitle: 'Why pass',
-    briefTitle: 'Screening memo',
-    risksTitle: 'Risks',
-    questionsTitle: 'Questions for management',
-    stageLabels: { sourced: 'Sourced', screening: 'Screening', committee: 'Committee', invested: 'Invested', passed: 'Passed' },
-    wantsOpener: false,
-    example: { name: 'Zenchef', websiteUrl: 'https://www.zenchef.com' },
-    desk: {
-      thesisName: 'European vertical software',
-      thesisText:
-        'Founder-led B2B software companies in Europe that serve one industry deeply (restaurants, hotels, clinics, construction, logistics…), ' +
-        'sell on subscription, and are the system their customers run the business on.',
-      criteria: [
-        { key: 'recurring', label: 'Recurring revenue', weight: 9, guide: 'Subscription or usage pricing, contracts, payments or other revenue that repeats without a new sale.' },
-        { key: 'position', label: 'Market position', weight: 7, guide: 'Customer count, named customers, countries served, leadership claims backed by numbers.' },
-        { key: 'growth', label: 'Growth signals', weight: 7, guide: 'Funding rounds, hiring, new markets, acquisitions, product launches in the last 12 months.' },
-        { key: 'stickiness', label: 'Product stickiness', weight: 8, guide: 'Is the product the system of record? Integrations, breadth of modules, switching cost.' },
-        { key: 'risk', label: 'Low risk profile', weight: 5, guide: '10 = no visible red flag. Lower for layoffs, litigation, regulatory exposure, dependence on one platform or customer.' },
       ],
     },
   },
@@ -240,7 +212,6 @@ export interface Deal {
   newsCheckedAt: string
   voting: 'open' | 'revealed'
   voteCount: number
-  pdfExports: number
   error: string
 }
 

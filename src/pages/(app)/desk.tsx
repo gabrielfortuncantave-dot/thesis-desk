@@ -12,8 +12,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useUser } from 'deepspace'
 import { Button, Input, Label, useToast } from '@/components/ui'
 import { CriteriaBars, StageChip, TotalScore } from '../../components/Score'
-import { ActivityFeed, PresenceLine } from '../../components/DeskLive'
-import { MarketMap } from '../../components/MarketMap'
+import { ActivityFeed } from '../../components/DeskLive'
 import { SignInPrompt } from '../../components/SignInPrompt'
 import { callAction } from '../../lib/actions'
 import { useDesk, usePlaybook } from '../../lib/desk'
@@ -30,10 +29,6 @@ export default function DeskPage() {
   const toast = useToast()
   const deals = useQuery<Deal>('deals', { orderBy: 'createdAt', orderDir: 'desc', limit: 200 })
   const [stage, setStage] = useState<Stage | 'all'>('all')
-  const [view, setView] = useState<'ranked' | 'stages' | 'map'>('ranked')
-  // Up to three companies ticked for the side-by-side comparison.
-  const [picked, setPicked] = useState<string[]>([])
-  const togglePick = (id: string) => setPicked((now) => (now.includes(id) ? now.filter((x) => x !== id) : now.length < 3 ? [...now, id] : now))
   const [busy, setBusy] = useState(false)
   const [formError, setFormError] = useState('')
 
@@ -81,38 +76,25 @@ export default function DeskPage() {
           <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">{words.thesisLabel}</p>
           <h1 className="font-display mt-2 text-4xl">{desk.thesisName}</h1>
           <p className="mt-3 text-muted-foreground">{desk.thesisText}</p>
-          {user && <PresenceLine />}
+          <p className="mt-4 text-sm" data-testid="try-it">
+            <span className="font-medium">New here?</span>{' '}
+            <span className="text-muted-foreground">
+              Open a target to read its scorecard. Or sign in, add the free sample and watch the analyst work, then vote
+              on it.{' '}
+            </span>
+            <Link to="/about" className="underline underline-offset-4">
+              How it works, and where it stops
+            </Link>
+          </p>
         </header>
 
         <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem]">
           <section aria-labelledby="pipeline-title">
             <div className="flex flex-wrap items-end justify-between gap-3">
-              <div className="flex items-end gap-4">
-                <h2 id="pipeline-title" className="font-display text-2xl">
-                  Pipeline
-                </h2>
-                <div className="flex rounded-md border border-border text-sm" role="group" aria-label="View">
-                  {(
-                    [
-                      ['ranked', 'Ranked'],
-                      ['stages', 'By stage'],
-                      ['map', 'Map'],
-                    ] as const
-                  ).map(([id, label]) => (
-                    <button
-                      key={id}
-                      type="button"
-                      aria-pressed={view === id}
-                      data-testid={`view-${id}`}
-                      onClick={() => setView(id)}
-                      className={`px-3 py-1 ${view === id ? 'bg-accent font-medium text-accent-foreground' : 'text-muted-foreground hover:bg-accent/60'}`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className={`flex flex-wrap gap-1 ${view === 'ranked' ? '' : 'hidden'}`} role="tablist" aria-label="Filter by stage">
+              <h2 id="pipeline-title" className="font-display text-2xl">
+                Pipeline
+              </h2>
+              <div className="flex flex-wrap gap-1" role="tablist" aria-label="Filter by stage">
                 {[{ id: 'all', label: 'All' } as const, ...STAGES.map((st) => ({ id: st.id, label: words.stageLabels[st.id] }))].map((s) => (
                   <button
                     key={s.id}
@@ -142,57 +124,6 @@ export default function DeskPage() {
               <p className="mt-6 text-sm text-muted-foreground">
                 {stage === 'all' ? 'Nothing here yet. Add the first target on the right.' : 'Nothing at this stage.'}
               </p>
-            ) : view === 'map' ? (
-              <div className="mt-4">
-                <MarketMap
-                  criteria={criteria}
-                  companies={deals.records
-                    .filter((d) => d.data.status === 'done')
-                    .map((d) => ({ id: d.recordId, name: d.data.name, scores: d.data.scores ?? [], total: weightedScore(d.data.scores ?? [], criteria) }))}
-                />
-              </div>
-            ) : view === 'stages' ? (
-              <div className="mt-4 grid gap-3 overflow-x-auto pb-2 [grid-template-columns:repeat(5,minmax(8.5rem,1fr))]" data-testid="stage-board">
-                {STAGES.map((column) => {
-                  const inStage = deals.records
-                    .filter((d) => d.data.stage === column.id)
-                    .map((d) => ({ deal: d, score: weightedScore(d.data.scores ?? [], criteria) }))
-                    .sort((a, b) => (b.score ?? -1) - (a.score ?? -1))
-                  return (
-                    <section key={column.id} aria-label={words.stageLabels[column.id]} data-testid="stage-column" data-stage={column.id} className="rounded-md bg-muted/60 p-3">
-                      <h3 className="flex items-baseline justify-between text-sm font-medium">
-                        {words.stageLabels[column.id]}
-                        <span className="tabular-nums text-muted-foreground">{inStage.length}</span>
-                      </h3>
-                      <ul className="mt-3 space-y-2">
-                        {inStage.map(({ deal, score }) => (
-                          <li key={deal.recordId} className="rounded-md border border-border bg-card p-3">
-                            <Link to={`/deal/${deal.recordId}`} className="font-display text-base underline-offset-4 hover:underline">
-                              {deal.data.name}
-                            </Link>
-                            <p className="mt-1 text-sm">
-                              {typeof score === 'number' ? (
-                                <span className="tabular-nums">
-                                  {score}
-                                  <span className="text-muted-foreground">/100</span>
-                                </span>
-                              ) : (
-                                <span className="text-muted-foreground">{deal.data.status === 'failed' ? 'Research failed' : deal.data.status === 'done' ? 'Not scored' : 'Researching…'}</span>
-                              )}
-                              {deal.data.voteCount > 0 && (
-                                <span className="text-muted-foreground">
-                                  {' · '}
-                                  {deal.data.voteCount} vote{deal.data.voteCount === 1 ? '' : 's'}
-                                </span>
-                              )}
-                            </p>
-                          </li>
-                        ))}
-                      </ul>
-                    </section>
-                  )
-                })}
-              </div>
             ) : (
               <ol className="mt-4 space-y-3">
                 {ranked.map(({ deal, score }, index) => {
@@ -231,18 +162,6 @@ export default function DeskPage() {
                             {d.voteCount > 0 && ` · ${d.voteCount} vote${d.voteCount === 1 ? '' : 's'} ${d.voting === 'revealed' ? 'revealed' : 'locked'}`}
                             {(d.news ?? []).some((n) => n.isNew) && ' · new headlines this week'}
                           </p>
-                          {d.status === 'done' && (
-                            <label className="mt-2 inline-flex items-center gap-2 text-xs text-muted-foreground">
-                              <input
-                                type="checkbox"
-                                data-testid="compare-pick"
-                                checked={picked.includes(deal.recordId)}
-                                disabled={!picked.includes(deal.recordId) && picked.length >= 3}
-                                onChange={() => togglePick(deal.recordId)}
-                              />
-                              Compare
-                            </label>
-                          )}
                         </div>
                         <div className="text-right">
                           <TotalScore score={score} />
@@ -252,23 +171,6 @@ export default function DeskPage() {
                   )
                 })}
               </ol>
-            )}
-            {picked.length > 0 && (
-              <div className="sticky bottom-4 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary bg-card px-4 py-3 text-sm shadow-sm" data-testid="compare-bar">
-                <span>
-                  {picked.length} of 3 selected{picked.length < 2 && '. Tick one more to compare.'}
-                </span>
-                <span className="flex items-center gap-3">
-                  <button type="button" className="text-muted-foreground underline underline-offset-4" onClick={() => setPicked([])}>
-                    Clear
-                  </button>
-                  {picked.length >= 2 && (
-                    <Link to={`/compare?ids=${picked.join(',')}`} className="rounded-md bg-primary px-3 py-1.5 font-medium text-primary-foreground" data-testid="compare-link">
-                      Compare side by side
-                    </Link>
-                  )}
-                </span>
-              </div>
             )}
             {(desk.suggestions ?? []).length > 0 && (
               <section className="mt-10" aria-labelledby="scout-title" data-testid="scouted">

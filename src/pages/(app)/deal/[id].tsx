@@ -57,18 +57,6 @@ export default function DealPage() {
     return reply
   }
 
-  async function downloadMemo() {
-    const reply = await run<{ pdfBase64: string; fileName: string }>('pdf', 'exportMemo')
-    if (!reply.success) return
-    const bytes = Uint8Array.from(atob(reply.data.pdfBase64), (c) => c.charCodeAt(0))
-    const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }))
-    const link = document.createElement('a')
-    link.href = url
-    link.download = reply.data.fileName
-    link.click()
-    URL.revokeObjectURL(url)
-  }
-
   return (
     <div className="min-h-full text-foreground">
       <div className="mx-auto max-w-5xl px-6 py-10">
@@ -261,16 +249,9 @@ export default function DealPage() {
 
             {deal.memo && (
               <section className="mt-12" aria-labelledby="memo-title">
-                <div className="flex flex-wrap items-end justify-between gap-3">
-                  <h2 id="memo-title" className="font-display text-2xl">
-                    {words.briefTitle}
-                  </h2>
-                  {user && (
-                    <Button variant="secondary" disabled={working !== ''} onClick={() => void downloadMemo()} data-testid="pdf-button">
-                      {working === 'pdf' ? 'Building the PDF…' : 'Download as PDF'}
-                    </Button>
-                  )}
-                </div>
+                <h2 id="memo-title" className="font-display text-2xl">
+                  {words.briefTitle}
+                </h2>
                 <div className="mt-4 grid gap-8 md:grid-cols-2">
                   <div className="space-y-4">
                     <p>{deal.memo.summary}</p>

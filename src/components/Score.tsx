@@ -54,8 +54,7 @@ export const SERIES_STYLE = [
 
 /**
  * Radar chart drawn as plain SVG: one axis per criterion, 0 at the centre, 10
- * at the rim. Draws one company on a scorecard, or up to three overlaid on the
- * compare page.
+ * at the rim.
  */
 export function RadarChart({ series, criteria }: { series: RadarSeries[]; criteria: Criterion[] }) {
   const size = 280
