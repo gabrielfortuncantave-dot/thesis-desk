@@ -450,12 +450,14 @@ export function toSuggestions(results: { title?: string; url?: string; text?: un
     } catch {
       continue
     }
+    // A link-in-bio or social page is not the organisation's website: research could not read it.
+    if (/(^|\.)(linktr\.ee|linkedin\.com|facebook\.com|instagram\.com|x\.com|twitter\.com)$/i.test(new URL(origin).host)) continue
     const name = String(r.title ?? '').split(/\s+[-|–·:]\s+|\s*\(/)[0].trim().slice(0, 60)
     if (!name || seen.has(origin)) continue
     seen.add(origin)
     // Exa's company cards read "# Name Name is a Software Development company. Name is a …": keep what follows.
     const body = asText(r.text).replace(/^#\s*/, '').replace(/\s+/g, ' ').trim()
-    const sentences = body.split(/(?<=\.)\s+/).filter((sentence) => !/ is an? [^.]{0,60} company\.$/i.test(sentence))
+    const sentences = body.split(/(?<=\.)\s+/).filter((sentence) => !/ is an? [^.]{0,60} (company|organi[sz]ation|institution)\.$/i.test(sentence))
     const why = (sentences.find((sentence) => sentence.toLowerCase().includes(name.toLowerCase().split(' ')[0]) && sentence.length > 40) ?? sentences[0] ?? '').slice(0, 200)
     suggestions.push({ name, websiteUrl: origin, why })
   }

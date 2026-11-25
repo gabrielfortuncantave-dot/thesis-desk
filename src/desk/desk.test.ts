@@ -120,6 +120,7 @@ describe('scout suggestions', () => {
       { title: 'Celery - Helping Hospitality Hustle Harder', url: 'https://celeryhq.eu/en/', text: '# Celery Celery is an IT Services company. Celery is a workforce planning tool for restaurants and hotels in Europe.' },
       { title: 'Thaïs again', url: 'https://thais-pms.com/pricing', text: 'duplicate site' },
       { title: 'Bad', url: 'javascript:alert(1)', text: 'x' },
+      { title: 'Some Club', url: 'https://linktr.ee/someclub', text: 'Some Club is a nonprofit organization.' },
     ])
     expect(found).toEqual([
       { name: 'Thaïs PMS', websiteUrl: 'https://thais-pms.com', why: 'Thaïs PMS is a French hotel management software that runs bookings and billing.' },
