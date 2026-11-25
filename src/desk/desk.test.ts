@@ -64,6 +64,10 @@ describe('playbook', () => {
       expect(new Set(keys).size).toBe(keys.length)
     }
   })
+  it('gives the scout a description of the target, separate from the thesis that describes us', () => {
+    expect(DEFAULT_DESK.scoutQuery).toMatch(/hackathon/i)
+    expect(DEFAULT_DESK.scoutQuery).not.toMatch(/^we are/i)
+  })
   it('asks the analyst for a first message and tells it that sources are untrusted', () => {
     expect(analystInstructions(DEFAULT_DESK)).toContain('"opener"')
     expect(analystInstructions(DEFAULT_DESK)).toContain('untrusted web pages')

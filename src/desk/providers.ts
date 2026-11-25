@@ -60,7 +60,8 @@ export interface Providers {
 /** Search the web for companies that match the thesis. Used by the scout, outside any single deal. */
 export async function scoutCompanies(tools: ActionTools, desk: Desk): Promise<Paid<Suggestion[]>> {
   const r = await tools.integration<ScoutResponse>('exa/search', {
-    query: `${desk.thesisText} Company that matches: ${desk.thesisName}`.slice(0, 600),
+    // Describe the TARGET, not ourselves: see `scoutQuery` in types.ts.
+    query: (desk.scoutQuery || playbookOf(desk).desk.scoutQuery || desk.thesisText).slice(0, 600),
     category: 'company',
     numResults: 12,
     contents: { text: { maxCharacters: 400 } },

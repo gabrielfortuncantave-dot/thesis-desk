@@ -206,6 +206,7 @@ export const actions: Record<string, ActionHandler<Env>> = {
       ...current,
       thesisName: cleanText(params.thesisName, 60) || current.thesisName,
       thesisText: cleanText(params.thesisText, 600) || current.thesisText,
+      scoutQuery: cleanText(params.scoutQuery, 400) || current.scoutQuery,
       criteria,
     }
     must(await tools.create('desk', desk as unknown as Record<string, unknown>, DESK_ID), 'save thesis')

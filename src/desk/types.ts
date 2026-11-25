@@ -23,6 +23,12 @@ export interface Suggestion {
 export interface Desk {
   thesisName: string
   thesisText: string
+  /**
+   * Who the scout searches for. Kept apart from the thesis text on purpose:
+   * the thesis says who WE are, and searching with it returns companies like
+   * us (competitors), not the organisations we want to reach.
+   */
+  scoutQuery?: string
   criteria: Criterion[]
   /** Filled by the scout (Monday task, or the owner's "Scout now" button). */
   suggestions?: Suggestion[]
@@ -43,6 +49,12 @@ export interface Desk {
   playbook?: PlaybookId
   thesisName: string
   thesisText: string
+  /**
+   * Who the scout searches for. Kept apart from the thesis text on purpose:
+   * the thesis says who WE are, and searching with it returns companies like
+   * us (competitors), not the organisations we want to reach.
+   */
+  scoutQuery?: string
   criteria: Criterion[]
   /** Filled by the scout (Monday task, or the owner's "Scout now" button). */
   suggestions?: Suggestion[]
@@ -78,7 +90,7 @@ export interface Playbook {
   wantsOpener: boolean
   example: { name: string; websiteUrl: string }
   /** The thesis and criteria a desk starts with under this playbook. */
-  desk: Pick<Desk, 'thesisName' | 'thesisText' | 'criteria'>
+  desk: Pick<Desk, 'thesisName' | 'thesisText' | 'scoutQuery' | 'criteria'>
 }
 
 export const PLAYBOOKS: Record<PlaybookId, Playbook> = {
@@ -104,6 +116,8 @@ export const PLAYBOOKS: Record<PlaybookId, Playbook> = {
         'We are a developer platform that lets a coding agent build and deploy a full-stack app (sign-in, live data, hosting) without setup. ' +
         'We want the communities, programs and tools whose members build and ship small web apps with AI: hackathon organisers, student builder clubs, bootcamps and AI coding tools. ' +
         'A good target puts our platform in front of people on the day they need to ship something.',
+      scoutQuery:
+        'Community, club, hackathon organiser or bootcamp whose members build and ship small web apps with AI coding agents. Organisation that runs hackathons, builder cohorts or student developer programs.',
       criteria: [
         { key: 'builders', label: 'Audience of builders', weight: 9, guide: 'Evidence that its members or users build and ship software projects: demos, hackathons, project showcases, cohorts.' },
         { key: 'agents', label: 'AI-agent native', weight: 8, guide: 'Uses, teaches or promotes AI coding tools and agents (Claude, Cursor, Copilot, vibe coding, MCP).' },

@@ -34,7 +34,7 @@ export default function AdminPage() {
     event.preventDefault()
     const form = new FormData(event.currentTarget)
     const criteria = desk.criteria.map((c) => ({ ...c, label: form.get(`label-${c.key}`), guide: form.get(`guide-${c.key}`) }))
-    const reply = await callAction('saveThesis', { thesisName: form.get('thesisName'), thesisText: form.get('thesisText'), criteria })
+    const reply = await callAction('saveThesis', { thesisName: form.get('thesisName'), thesisText: form.get('thesisText'), scoutQuery: form.get('scoutQuery'), criteria })
     if (!reply.success) return toast.warning('Not saved', reply.error)
     toast.success('Thesis saved', 'New research will use this wording.')
   }
@@ -127,6 +127,11 @@ export default function AdminPage() {
             <div>
               <Label htmlFor="thesisText">Thesis</Label>
               <Textarea id="thesisText" name="thesisText" maxLength={600} defaultValue={desk.thesisText} className="mt-1.5" />
+            </div>
+            <div>
+              <Label htmlFor="scoutQuery">Who the scout searches for</Label>
+              <Textarea id="scoutQuery" name="scoutQuery" maxLength={400} defaultValue={desk.scoutQuery ?? ''} className="mt-1.5" />
+              <p className="mt-1 text-xs text-muted-foreground">Describe the organisations you want to reach, not yourself. A search with "we are…" returns your competitors.</p>
             </div>
             {desk.criteria.map((c) => (
               <div key={c.key} className="grid gap-3 sm:grid-cols-[12rem_minmax(0,1fr)]">

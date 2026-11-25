@@ -21,6 +21,7 @@ export const deskSchema: CollectionSchema = {
     { name: 'playbook', storage: 'text', interpretation: 'plain' },
     { name: 'thesisName', storage: 'text', interpretation: 'plain' },
     { name: 'thesisText', storage: 'text', interpretation: 'plain' },
+    { name: 'scoutQuery', storage: 'text', interpretation: 'plain' },
     { name: 'criteria', storage: 'text', interpretation: { kind: 'json' } },
     { name: 'suggestions', storage: 'text', interpretation: { kind: 'json' } },
     { name: 'scoutedAt', storage: 'text', interpretation: 'plain' },

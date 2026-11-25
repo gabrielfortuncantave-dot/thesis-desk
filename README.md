@@ -144,7 +144,7 @@ not have.
 - Verification proves a sentence exists in the source. It does not prove the sentence supports the score.
 - The draft first message is a starting point and can be bland. It is never sent by the app.
 - The example thesis is an outsider's reading. The weights are opinions; that is why they are sliders.
-- Scouted organisations are search results, not recommendations, until they are researched.
+- Scouted organisations are search results, not recommendations, until they are researched. The scout searches with a description of the target, kept separate from the thesis: the first live scout used the thesis text ("we are a developer platform…") and returned competitors.
 - News is kept only when the article names the target as whole words. A very common name can still collect unrelated articles.
 - One desk, one thesis. No private workspaces, no invitations, no comments.
 - After the reveal a vote cannot be reopened. The activity feed is never trimmed.
